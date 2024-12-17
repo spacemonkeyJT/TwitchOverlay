@@ -40,7 +40,7 @@ async function main() {
 
     await startBot(options);
 
-    update(0);
+    update(50);
   } catch (err) {
     console.log(err);
     errorPanel.textContent = `${err}`;

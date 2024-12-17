@@ -139,7 +139,7 @@ async function main() {
     if (!options2.channel)
       throw Error("Missing channel parameter.");
     await startBot(options2);
-    update(0);
+    update(50);
   } catch (err) {
     console.log(err);
     errorPanel.textContent = `${err}`;
