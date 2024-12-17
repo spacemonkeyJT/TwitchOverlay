@@ -1,7 +1,8 @@
-import { sendChatMessage, startBot, type MessageData } from "./twitch"
+import { sendChatMessage, startBot, type MessageData, type Options } from "./twitch"
 
 const progressbar = document.querySelector<HTMLDivElement>('.progressbar')!
 const label = document.querySelector<HTMLDivElement>('.label')!
+const errorPanel = document.querySelector<HTMLDivElement>('.errorPanel')!
 
 function update(percentComplete: number) {
   progressbar.style.width = `${percentComplete}%`
@@ -21,8 +22,30 @@ function processChatMessage(data: MessageData) {
 }
 
 async function main() {
-  update(50);
-  await startBot(processChatMessage);
+  try {
+    const params = new URLSearchParams(window.location.search);
+
+    const options: Options = {
+      processChatMessage,
+      channel: params.get('channel')!,
+      user_id: params.get('user_id')!,
+      token: params.get('token')!,
+      clientID: params.get('client_id')!,
+    };
+
+    if (!options.user_id) throw Error('Missing user_id parameter.');
+    if (!options.token) throw Error('Missing token parameter.');
+    if (!options.clientID) throw Error('Missing client_id parameter.');
+    if (!options.channel) throw Error('Missing channel parameter.');
+
+    await startBot(options);
+
+    update(0);
+  } catch (err) {
+    console.log(err);
+    errorPanel.textContent = `${err}`;
+    errorPanel.style.display = 'block';
+  }
 }
 
-main().catch(console.error);
+main();

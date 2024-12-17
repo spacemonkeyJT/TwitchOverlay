@@ -9,6 +9,7 @@
     body {
       margin: 0;
       overflow: hidden;
+      font-family: sans-serif;
     }
 
     .hypemeter {
@@ -32,6 +33,16 @@
       left: 50%;
       transform: translate(-50%, -50%);
     }
+
+    .errorPanel {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100vh;
+      font-weight: bold;
+      display: none;
+    }
   </style>
 </head>
 
@@ -40,6 +51,7 @@
     <div class="progressbar"></div>
     <div class="label"></div>
   </div>
+  <div class="errorPanel"></div>
   <script src="bundle.js"></script>
 </body>
 

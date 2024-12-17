@@ -1,23 +1,10 @@
 // src/twitch.ts
-var params = new URLSearchParams(window.location.search);
-var BOT_USER_ID = params.get("user_id");
-if (!BOT_USER_ID)
-  throw Error("Missing user_id parameter.");
-var OAUTH_TOKEN = params.get("token");
-if (!OAUTH_TOKEN)
-  throw Error("Missing token parameter.");
-var CLIENT_ID = params.get("client_id");
-if (!CLIENT_ID)
-  throw Error("Missing client_id parameter.");
-var CHAT_CHANNEL_USER_ID = params.get("channel");
-if (!CHAT_CHANNEL_USER_ID)
-  throw Error("Missing channel parameter.");
 var EVENTSUB_WEBSOCKET_URL = "wss://eventsub.wss.twitch.tv/ws";
 var websocketSessionID;
 var websocketClient;
-var processChatMessage;
-async function startBot(_processChatMessage) {
-  processChatMessage = _processChatMessage;
+var options;
+async function startBot(_options) {
+  options = _options;
   await getAuth();
   websocketClient = startWebSocketClient();
 }
@@ -25,7 +12,7 @@ async function getAuth() {
   let response = await fetch("https://id.twitch.tv/oauth2/validate", {
     method: "GET",
     headers: {
-      Authorization: "OAuth " + OAUTH_TOKEN
+      Authorization: "OAuth " + options.token
     }
   });
   if (response.status != 200) {
@@ -57,7 +44,7 @@ function handleWebSocketMessage(data) {
       switch (data.metadata.subscription_type) {
         case "channel.chat.message":
           console.log(`MSG #${data.payload.event.broadcaster_user_login} <${data.payload.event.chatter_user_login}> ${data.payload.event.message.text}`);
-          processChatMessage(data);
+          options.processChatMessage(data);
           break;
       }
       break;
@@ -67,13 +54,13 @@ async function sendChatMessage(chatMessage) {
   let response = await fetch("https://api.twitch.tv/helix/chat/messages", {
     method: "POST",
     headers: {
-      Authorization: "Bearer " + OAUTH_TOKEN,
-      "Client-Id": CLIENT_ID,
+      Authorization: "Bearer " + options.token,
+      "Client-Id": options.clientID,
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      broadcaster_id: CHAT_CHANNEL_USER_ID,
-      sender_id: BOT_USER_ID,
+      broadcaster_id: options.channel,
+      sender_id: options.user_id,
       message: chatMessage
     })
   });
@@ -89,16 +76,16 @@ async function registerEventSubListeners() {
   let response = await fetch("https://api.twitch.tv/helix/eventsub/subscriptions", {
     method: "POST",
     headers: {
-      Authorization: "Bearer " + OAUTH_TOKEN,
-      "Client-Id": CLIENT_ID,
+      Authorization: "Bearer " + options.token,
+      "Client-Id": options.clientID,
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
       type: "channel.chat.message",
       version: "1",
       condition: {
-        broadcaster_user_id: CHAT_CHANNEL_USER_ID,
-        user_id: BOT_USER_ID
+        broadcaster_user_id: options.channel,
+        user_id: options.user_id
       },
       transport: {
         method: "websocket",
@@ -119,11 +106,12 @@ async function registerEventSubListeners() {
 // src/app.ts
 var progressbar = document.querySelector(".progressbar");
 var label = document.querySelector(".label");
+var errorPanel = document.querySelector(".errorPanel");
 function update(percentComplete) {
   progressbar.style.width = `${percentComplete}%`;
   label.textContent = `${percentComplete}%`;
 }
-function processChatMessage2(data) {
+function processChatMessage(data) {
   const message = data.payload.event.message.text.trim();
   let match = null;
   if (match = /^!sethypemeter\s+(\d+(?:\.\d+)?)$/i.exec(message)) {
@@ -133,7 +121,29 @@ function processChatMessage2(data) {
   }
 }
 async function main() {
-  update(50);
-  await startBot(processChatMessage2);
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const options2 = {
+      processChatMessage,
+      channel: params.get("channel"),
+      user_id: params.get("user_id"),
+      token: params.get("token"),
+      clientID: params.get("client_id")
+    };
+    if (!options2.user_id)
+      throw Error("Missing user_id parameter.");
+    if (!options2.token)
+      throw Error("Missing token parameter.");
+    if (!options2.clientID)
+      throw Error("Missing client_id parameter.");
+    if (!options2.channel)
+      throw Error("Missing channel parameter.");
+    await startBot(options2);
+    update(0);
+  } catch (err) {
+    console.log(err);
+    errorPanel.textContent = `${err}`;
+    errorPanel.style.display = "block";
+  }
 }
-main().catch(console.error);
+main();

@@ -1,27 +1,31 @@
-const params = new URLSearchParams(window.location.search);
-
-const BOT_USER_ID = params.get('user_id')!; // This is the User ID of the chat bot
-if (!BOT_USER_ID) throw Error('Missing user_id parameter.');
-
-const OAUTH_TOKEN = params.get('token')!; // Needs scopes user:bot, user:read:chat, user:write:chat
-if (!OAUTH_TOKEN) throw Error('Missing token parameter.');
-
-const CLIENT_ID = params.get('client_id')!;
-if (!CLIENT_ID) throw Error('Missing client_id parameter.');
-
-const CHAT_CHANNEL_USER_ID = params.get('channel')!; // This is the User ID of the channel that the bot will join and listen to chat messages of
-if (!CHAT_CHANNEL_USER_ID) throw Error('Missing channel parameter.');
 
 const EVENTSUB_WEBSOCKET_URL = 'wss://eventsub.wss.twitch.tv/ws';
 
 let websocketSessionID: string;
 let websocketClient: WebSocket;
-let processChatMessage: (data: MessageData) => unknown;
 
-export async function startBot(_processChatMessage: (data: MessageData) => unknown) {
-  processChatMessage = _processChatMessage;
+export type Options = {
+  processChatMessage: (data: MessageData) => unknown;
+  
+  /** This is the User ID of the chat bot */
+  user_id: string;
+  
+  /** Needs scopes user:bot, user:read:chat, user:write:chat */
+  token: string;
 
-// Start executing the bot from here
+  /** This is the User ID of the channel that the bot will join and listen to chat messages of */
+  channel: string;
+
+  /** Application client ID */
+  clientID: string;
+}
+
+let options: Options;
+
+export async function startBot(_options: Options) {
+  options = _options;
+
+  // Start executing the bot from here
   // Verify that the authentication is valid
   await getAuth();
 
@@ -34,7 +38,7 @@ async function getAuth() {
   let response = await fetch('https://id.twitch.tv/oauth2/validate', {
     method: 'GET',
     headers: {
-      'Authorization': 'OAuth ' + OAUTH_TOKEN
+      'Authorization': 'OAuth ' + options.token
     }
   });
 
@@ -97,7 +101,7 @@ function handleWebSocketMessage(data: MessageData) {
           // First, print the message to the program's console.
           console.log(`MSG #${data.payload.event.broadcaster_user_login} <${data.payload.event.chatter_user_login}> ${data.payload.event.message.text}`);
 
-          processChatMessage(data);
+          options.processChatMessage(data);
 
           break;
       }
@@ -109,13 +113,13 @@ export async function sendChatMessage(chatMessage: string) {
   let response = await fetch('https://api.twitch.tv/helix/chat/messages', {
     method: 'POST',
     headers: {
-      'Authorization': 'Bearer ' + OAUTH_TOKEN,
-      'Client-Id': CLIENT_ID,
+      'Authorization': 'Bearer ' + options.token,
+      'Client-Id': options.clientID,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      broadcaster_id: CHAT_CHANNEL_USER_ID,
-      sender_id: BOT_USER_ID,
+      broadcaster_id: options.channel,
+      sender_id: options.user_id,
       message: chatMessage
     })
   });
@@ -134,16 +138,16 @@ async function registerEventSubListeners() {
   let response = await fetch('https://api.twitch.tv/helix/eventsub/subscriptions', {
     method: 'POST',
     headers: {
-      'Authorization': 'Bearer ' + OAUTH_TOKEN,
-      'Client-Id': CLIENT_ID,
+      'Authorization': 'Bearer ' + options.token,
+      'Client-Id': options.clientID,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
       type: 'channel.chat.message',
       version: '1',
       condition: {
-        broadcaster_user_id: CHAT_CHANNEL_USER_ID,
-        user_id: BOT_USER_ID
+        broadcaster_user_id: options.channel,
+        user_id: options.user_id
       },
       transport: {
         method: 'websocket',
