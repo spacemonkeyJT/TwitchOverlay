@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -33,6 +34,7 @@
     }
   </style>
 </head>
+
 <body>
   <div class="hypemeter">
     <div class="progressbar"></div>
@@ -52,16 +54,16 @@
 
     const params = new URLSearchParams(window.location.search);
 
-    const BOT_USER_ID = params.get('user_id'); // 'CHANGE_ME_TO_YOUR_BOTS_USER_ID'; // This is the User ID of the chat bot
+    const BOT_USER_ID = params.get('user_id'); // This is the User ID of the chat bot
     if (!BOT_USER_ID) throw Error('Missing user_id parameter.');
 
-    const OAUTH_TOKEN = params.get('token'); // 'CHANGE_ME_TO_YOUR_OAUTH_TOKEN'; // Needs scopes user:bot, user:read:chat, user:write:chat
+    const OAUTH_TOKEN = params.get('token'); // Needs scopes user:bot, user:read:chat, user:write:chat
     if (!OAUTH_TOKEN) throw Error('Missing token parameter.');
 
-    const CLIENT_ID = params.get('client_id'); // 'CHANGE_ME_TO_YOUR_CLIENT_ID';
+    const CLIENT_ID = params.get('client_id');
     if (!CLIENT_ID) throw Error('Missing client_id parameter.');
 
-    const CHAT_CHANNEL_USER_ID = params.get('channel'); // 'CHANGE_ME_TO_THE_CHAT_CHANNELS_USER_ID'; // This is the User ID of the channel that the bot will join and listen to chat messages of
+    const CHAT_CHANNEL_USER_ID = params.get('channel'); // This is the User ID of the channel that the bot will join and listen to chat messages of
     if (!CHAT_CHANNEL_USER_ID) throw Error('Missing channel parameter.');
 
     const EVENTSUB_WEBSOCKET_URL = 'wss://eventsub.wss.twitch.tv/ws';
@@ -119,7 +121,7 @@
     function handleWebSocketMessage(data) {
       switch (data.metadata.message_type) {
         case 'session_welcome': // First message you get from the WebSocket server when connecting
-        websocketSessionID = data.payload.session.id; // Register the Session ID it gives us
+          websocketSessionID = data.payload.session.id; // Register the Session ID it gives us
           // Listen to EventSub, which joins the chatroom from your bot's account
           registerEventSubListeners();
           break;
@@ -137,7 +139,7 @@
                 update(hypemeterValue);
                 sendChatMessage('Super secret command successful');
               }
-              
+
               // Then check to see if that message was "HeyGuys"
               else if (data.payload.event.message.text.trim() == "HeyGuys") {
                 // If so, send back "VoHiYo" to the chatroom
@@ -210,4 +212,5 @@
 
   </script>
 </body>
+
 </html>
