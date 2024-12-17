@@ -1,12 +1,4 @@
-// src/app.ts
-var hypemeter = document.querySelector(".hypemeter");
-var progressbar = document.querySelector(".progressbar");
-var label = document.querySelector(".label");
-var update = (percentComplete) => {
-  progressbar.style.width = `${percentComplete}%`;
-  label.textContent = `${percentComplete}%`;
-};
-update(50);
+// src/twitch.ts
 var params = new URLSearchParams(window.location.search);
 var BOT_USER_ID = params.get("user_id");
 if (!BOT_USER_ID)
@@ -22,10 +14,13 @@ if (!CHAT_CHANNEL_USER_ID)
   throw Error("Missing channel parameter.");
 var EVENTSUB_WEBSOCKET_URL = "wss://eventsub.wss.twitch.tv/ws";
 var websocketSessionID;
-(async () => {
+var websocketClient;
+var processChatMessage;
+async function startBot(_processChatMessage) {
+  processChatMessage = _processChatMessage;
   await getAuth();
-  const websocketClient = startWebSocketClient();
-})();
+  websocketClient = startWebSocketClient();
+}
 async function getAuth() {
   let response = await fetch("https://id.twitch.tv/oauth2/validate", {
     method: "GET",
@@ -41,17 +36,16 @@ async function getAuth() {
   console.log("Validated token.");
 }
 function startWebSocketClient() {
-  let websocketClient = new WebSocket(EVENTSUB_WEBSOCKET_URL);
-  console.log(websocketClient);
-  websocketClient.addEventListener("error", console.error);
-  websocketClient.addEventListener("open", () => {
+  let websocketClient2 = new WebSocket(EVENTSUB_WEBSOCKET_URL);
+  console.log(websocketClient2);
+  websocketClient2.addEventListener("error", console.error);
+  websocketClient2.addEventListener("open", () => {
     console.log("WebSocket connection opened to " + EVENTSUB_WEBSOCKET_URL);
   });
-  websocketClient.addEventListener("message", (msg) => {
-    console.log("message", msg);
+  websocketClient2.addEventListener("message", (msg) => {
     handleWebSocketMessage(JSON.parse(msg.data.toString()));
   });
-  return websocketClient;
+  return websocketClient2;
 }
 function handleWebSocketMessage(data) {
   switch (data.metadata.message_type) {
@@ -63,14 +57,7 @@ function handleWebSocketMessage(data) {
       switch (data.metadata.subscription_type) {
         case "channel.chat.message":
           console.log(`MSG #${data.payload.event.broadcaster_user_login} <${data.payload.event.chatter_user_login}> ${data.payload.event.message.text}`);
-          const message = data.payload.event.message.text.trim();
-          if (message.startsWith("!supersecretcommand")) {
-            const hypemeterValue = parseFloat(message.substring("!sethypemeter".length).trim());
-            update(hypemeterValue);
-            sendChatMessage("Super secret command successful");
-          } else if (data.payload.event.message.text.trim() == "HeyGuys") {
-            update(50);
-          }
+          processChatMessage(data);
           break;
       }
       break;
@@ -128,3 +115,25 @@ async function registerEventSubListeners() {
     console.log(`Subscribed to channel.chat.message [${data.data[0].id}]`);
   }
 }
+
+// src/app.ts
+var progressbar = document.querySelector(".progressbar");
+var label = document.querySelector(".label");
+function update(percentComplete) {
+  progressbar.style.width = `${percentComplete}%`;
+  label.textContent = `${percentComplete}%`;
+}
+function processChatMessage2(data) {
+  const message = data.payload.event.message.text.trim();
+  let match = null;
+  if (match = /^!sethypemeter\s+(\d+(?:\.\d+)?)$/i.exec(message)) {
+    const hypemeterValue = parseFloat(match[1]);
+    update(hypemeterValue);
+    sendChatMessage("Hype meter set to " + hypemeterValue);
+  }
+}
+async function main() {
+  update(50);
+  await startBot(processChatMessage2);
+}
+main().catch(console.error);
