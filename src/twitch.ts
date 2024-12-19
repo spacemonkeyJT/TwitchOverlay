@@ -71,20 +71,48 @@ function startWebSocketClient() {
 
 export type MessageData = {
   metadata: {
+    message_id: string;
+    message_timestamp: string;
     message_type: string;
-    subscription_type: string
+    subscription_type: string;
+    subscription_version: string;
   };
   payload: {
     session: {
       id: string
     };
     event: {
+      badges: {
+        id: string;
+        info: string;
+        set_id: string;
+      }[];
+      broadcaster_user_id: string;
       broadcaster_user_login: string;
+      broadcaster_user_name: string;
+      channel_points_animation_id: string;
+      channel_points_custom_reward_id: string;
+      chatter_user_id: string;
       chatter_user_login: string;
+      chatter_user_name: string;
+      cheer: {
+        bits: number;
+      } | null;
+      color: string;
       message: {
+        fragments: any[];
         text: string
-      }
-    }
+      };
+      message_id: string;
+      message_type: string;
+      reply: any;
+      source_badges: any;
+      source_broadcaster_user_id: any;
+      source_broadcaster_user_login: any;
+      source_broadcaster_user_name: any;
+      source_message_id: any;
+    },
+    subscription: any;
   }
 }
 
@@ -96,6 +124,7 @@ function handleWebSocketMessage(data: MessageData) {
       registerEventSubListeners();
       break;
     case 'notification': // An EventSub notification has occurred, such as channel.chat.message
+      console.log(data);
       switch (data.metadata.subscription_type) {
         case 'channel.chat.message':
           // First, print the message to the program's console.

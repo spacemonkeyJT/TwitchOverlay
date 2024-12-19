@@ -1,24 +1,10 @@
-import { sendChatMessage, startBot, type MessageData, type Options } from "./twitch"
+import { processHypeMeter, initHypeMeter } from "./hypemeter"
+import { startBot, type MessageData, type Options } from "./twitch"
 
-const progressbar = document.querySelector<HTMLDivElement>('.progressbar')!
-const label = document.querySelector<HTMLDivElement>('.label')!
 const errorPanel = document.querySelector<HTMLDivElement>('.errorPanel')!
 
-function update(percentComplete: number) {
-  progressbar.style.width = `${percentComplete}%`
-  label.textContent = `${percentComplete}%`
-}
-
 function processChatMessage(data: MessageData) {
-  const message = data.payload.event.message.text.trim();
-
-  let match: RegExpExecArray | null = null;
-
-  if (match = /^!sethypemeter\s+(\d+(?:\.\d+)?)$/i.exec(message)) {
-    const hypemeterValue = parseFloat(match[1]);
-    update(hypemeterValue);
-    sendChatMessage('Hype meter set to ' + hypemeterValue);
-  }
+  processHypeMeter(data);
 }
 
 async function main() {
@@ -40,7 +26,7 @@ async function main() {
 
     await startBot(options);
 
-    update(50);
+    initHypeMeter();
   } catch (err) {
     console.log(err);
     errorPanel.textContent = `${err}`;

@@ -41,6 +41,7 @@ function handleWebSocketMessage(data) {
       registerEventSubListeners();
       break;
     case "notification":
+      console.log(data);
       switch (data.metadata.subscription_type) {
         case "channel.chat.message":
           console.log(`MSG #${data.payload.event.broadcaster_user_login} <${data.payload.event.chatter_user_login}> ${data.payload.event.message.text}`);
@@ -103,22 +104,64 @@ async function registerEventSubListeners() {
   }
 }
 
-// src/app.ts
+// src/hypemeter.ts
 var progressbar = document.querySelector(".progressbar");
 var label = document.querySelector(".label");
-var errorPanel = document.querySelector(".errorPanel");
-function update(percentComplete) {
-  progressbar.style.width = `${percentComplete}%`;
-  label.textContent = `${percentComplete}%`;
+var meter = {
+  value: 50,
+  max: 300,
+  bitsRate: 0.1
+};
+function saveData() {
+  localStorage.setItem("hypemeter", JSON.stringify(meter));
 }
-function processChatMessage(data) {
-  const message = data.payload.event.message.text.trim();
-  let match = null;
-  if (match = /^!sethypemeter\s+(\d+(?:\.\d+)?)$/i.exec(message)) {
-    const hypemeterValue = parseFloat(match[1]);
-    update(hypemeterValue);
-    sendChatMessage("Hype meter set to " + hypemeterValue);
+function loadData() {
+  const json = localStorage.getItem("hypemeter");
+  if (json) {
+    const data = JSON.parse(json);
+    meter.value = data.value;
+    meter.max = data.max;
   }
+}
+function updateHypeMeter() {
+  const percent = meter.value / meter.max * 100;
+  progressbar.style.width = `${percent}%`;
+  label.textContent = `${meter.value}/${meter.max}`;
+}
+function setHypeMeter(value, max) {
+  meter.value = value;
+  meter.max = max;
+  saveData();
+  updateHypeMeter();
+}
+function initHypeMeter() {
+  loadData();
+  updateHypeMeter();
+}
+function processHypeMeter(data) {
+  const message = data.payload.event.message.text.trim();
+  const badges = data.payload.event.badges.map((badge) => badge.set_id);
+  const isModerator = badges.includes("moderator") || badges.includes("broadcaster");
+  const [command, ...args] = message.split(" ");
+  if (isModerator) {
+    if ((command === "!sethypemeter" || command === "!sethm") && args[0]) {
+      const val = parseFloat(args[0]);
+      const max = args[1] ? parseFloat(args[1]) : meter.max;
+      if (val >= 0 && val <= max) {
+        setHypeMeter(val, max);
+        sendChatMessage("Hype meter set to " + val);
+      }
+    }
+    if (command === "!reloadhypemeter" || command === "!reloadhm") {
+      location.reload();
+    }
+  }
+}
+
+// src/app.ts
+var errorPanel = document.querySelector(".errorPanel");
+function processChatMessage(data) {
+  processHypeMeter(data);
 }
 async function main() {
   try {
@@ -139,7 +182,7 @@ async function main() {
     if (!options2.channel)
       throw Error("Missing channel parameter.");
     await startBot(options2);
-    update(50);
+    initHypeMeter();
   } catch (err) {
     console.log(err);
     errorPanel.textContent = `${err}`;
