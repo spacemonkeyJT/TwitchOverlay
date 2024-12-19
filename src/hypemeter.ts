@@ -12,24 +12,34 @@ type MeterConfig = {
   subTier3Rate: number
 }
 
-const meter: MeterConfig = {
+const defaults: MeterConfig = {
   value: 50,
   max: 300,
-  bitsRate: 0.1,
-  subTier1Rate: 5,
-  subTier2Rate: 10,
-  subTier3Rate: 15,
+
+  // Set assuming that 100 bits cost $1.40, and streamers receive 80% of it.
+  bitsRate: 0.0112,
+
+  // Set assuming subs cost $5 for T1, $10 for T2, $25 for T3, and streamers receive 70% of it (at level 2 of plus program)
+  subTier1Rate: 3.5,
+  subTier2Rate: 7,
+  subTier3Rate: 17.5,
 }
+
+const meter = { ...defaults };
 
 function saveData() {
   localStorage.setItem('hypemeter', JSON.stringify(meter));
 }
 
 function loadData() {
-  const json = localStorage.getItem('hypemeter');
-  if (json) {
-    const data = JSON.parse(json) as MeterConfig;
-    Object.assign(meter, data);
+  try {
+    const json = localStorage.getItem('hypemeter');
+    if (json) {
+      const data = JSON.parse(json) as MeterConfig;
+      Object.assign(meter, data);
+    }
+  } catch (err) {
+    console.error(err);
   }
 }
 
@@ -134,7 +144,13 @@ export function processHypeMeter(data: MessageData) {
           }
           break;
         case 'config':
-          sendChatMessage(`Hype meter bits rate: ${meter.bitsRate}, sub tier 1 rate: ${meter.subTier1Rate}, sub tier 2 rate: ${meter.subTier2Rate}, sub tier 3 rate: ${meter.subTier3Rate}`);
+          sendChatMessage(`Hype meter bits rate: $${meter.bitsRate}, sub tier 1 rate: $${meter.subTier1Rate}, sub tier 2 rate: $${meter.subTier2Rate}, sub tier 3 rate: $${meter.subTier3Rate}`);
+          break;
+        case 'reset':
+          Object.assign(meter, defaults);
+          updateHypeMeter();
+          saveData();
+          sendChatMessage('Hype meter reset');
           break;
       }
     }

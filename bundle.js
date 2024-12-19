@@ -107,22 +107,27 @@ async function registerEventSubListeners() {
 // src/hypemeter.ts
 var progressbar = document.querySelector(".progressbar");
 var label = document.querySelector(".label");
-var meter = {
+var defaults = {
   value: 50,
   max: 300,
-  bitsRate: 0.1,
-  subTier1Rate: 5,
-  subTier2Rate: 10,
-  subTier3Rate: 15
+  bitsRate: 0.0112,
+  subTier1Rate: 3.5,
+  subTier2Rate: 7,
+  subTier3Rate: 17.5
 };
+var meter = { ...defaults };
 function saveData() {
   localStorage.setItem("hypemeter", JSON.stringify(meter));
 }
 function loadData() {
-  const json = localStorage.getItem("hypemeter");
-  if (json) {
-    const data = JSON.parse(json);
-    Object.assign(meter, data);
+  try {
+    const json = localStorage.getItem("hypemeter");
+    if (json) {
+      const data = JSON.parse(json);
+      Object.assign(meter, data);
+    }
+  } catch (err) {
+    console.error(err);
   }
 }
 function updateHypeMeter() {
@@ -218,7 +223,13 @@ function processHypeMeter(data) {
           }
           break;
         case "config":
-          sendChatMessage(`Hype meter bits rate: ${meter.bitsRate}, sub tier 1 rate: ${meter.subTier1Rate}, sub tier 2 rate: ${meter.subTier2Rate}, sub tier 3 rate: ${meter.subTier3Rate}`);
+          sendChatMessage(`Hype meter bits rate: $${meter.bitsRate}, sub tier 1 rate: $${meter.subTier1Rate}, sub tier 2 rate: $${meter.subTier2Rate}, sub tier 3 rate: $${meter.subTier3Rate}`);
+          break;
+        case "reset":
+          Object.assign(meter, defaults);
+          updateHypeMeter();
+          saveData();
+          sendChatMessage("Hype meter reset");
           break;
       }
     }
