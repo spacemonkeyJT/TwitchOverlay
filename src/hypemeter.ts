@@ -46,7 +46,7 @@ function loadData() {
 function updateHypeMeter() {
   const percent = meter.value / meter.max * 100;
   progressbar.style.width = `${percent}%`;
-  label.textContent = `${meter.value}/${meter.max}`;
+  label.textContent = `$${meter.value.toFixed(2)} / $${meter.max.toFixed(2)}`;
 }
 
 function setHypeMeter(value: number, max?: number) {
@@ -63,6 +63,21 @@ export function initHypeMeter() {
   updateHypeMeter();
 }
 
+function applySubs(count: number, tier: number) {
+  const rate = tier === 1 ? meter.subTier1Rate : tier === 2 ? meter.subTier2Rate : meter.subTier3Rate;
+  const val = Math.min(meter.value + rate * count, meter.max);
+  setHypeMeter(val);
+  saveData();
+  sendChatMessage('Hype meter set to $' + val.toFixed(2));
+}
+
+function applyBits(bits: number) {
+  const val = Math.min(meter.value + meter.bitsRate * bits, meter.max);
+  setHypeMeter(val);
+  saveData();
+  sendChatMessage('Hype meter set to $' + val.toFixed(2));
+}
+
 export function processHypeMeter(data: MessageData) {
   const message = data.payload.event.message.text.trim();
 
@@ -71,10 +86,21 @@ export function processHypeMeter(data: MessageData) {
 
   const [command, ...args] = message.split(' ');
 
-  if (data.payload.event.cheer) {
-    const val = Math.min(meter.value + meter.bitsRate * data.payload.event.cheer.bits, meter.max);
-    setHypeMeter(val);
-    sendChatMessage('Hype meter set to ' + val);
+  const { cheer } = data.payload.event;;
+
+  const { chatter_user_login } = data.payload.event;
+
+  if (cheer) {
+    applyBits(cheer.bits);
+  }
+
+  if (chatter_user_login === 'streamlabs') {
+    let match: RegExpExecArray | null;
+    if (match = /^(.*) just gifted (\d+) Tier (\d+) subscriptions!$/.exec(message)) {
+      const count = parseInt(match[2]);
+      const tier = parseInt(match[3]);
+      applySubs(count, tier);
+    }
   }
 
   if (isModerator) {
@@ -83,7 +109,7 @@ export function processHypeMeter(data: MessageData) {
       const max = args[1] ? parseFloat(args[1]) : meter.max;
       if (val >= 0 && val <= max) {
         setHypeMeter(val, max);
-        sendChatMessage('Hype meter set to ' + val);
+        sendChatMessage('Hype meter set to $' + val.toFixed(2));
       }
     }
     else if (command === '!hm') {
@@ -96,7 +122,7 @@ export function processHypeMeter(data: MessageData) {
             const max = subArgs[1] ? parseFloat(subArgs[1]) : meter.max;
             if (val >= 0 && val <= max) {
               setHypeMeter(val, max);
-              sendChatMessage('Hype meter set to ' + val);
+              sendChatMessage('Hype meter set to $' + val.toFixed(2));
             }
           }
           break;
@@ -109,7 +135,7 @@ export function processHypeMeter(data: MessageData) {
             if (val > 0) {
               meter.bitsRate = val;
               saveData();
-              sendChatMessage('Hype meter bits rate set to ' + val);
+              sendChatMessage('Hype meter bits rate set to $' + val.toFixed(2));
             }
           }
           break;
@@ -119,7 +145,7 @@ export function processHypeMeter(data: MessageData) {
             if (val > 0) {
               meter.subTier1Rate = val;
               saveData();
-              sendChatMessage('Hype meter sub tier 1 rate set to ' + val);
+              sendChatMessage('Hype meter sub tier 1 rate set to $' + val.toFixed(2));
             }
           }
           break;
@@ -129,7 +155,7 @@ export function processHypeMeter(data: MessageData) {
             if (val > 0) {
               meter.subTier2Rate = val;
               saveData();
-              sendChatMessage('Hype meter sub tier 2 rate set to ' + val);
+              sendChatMessage('Hype meter sub tier 2 rate set to $' + val.toFixed(2));
             }
           }
           break;
@@ -139,7 +165,7 @@ export function processHypeMeter(data: MessageData) {
             if (val > 0) {
               meter.subTier3Rate = val;
               saveData();
-              sendChatMessage('Hype meter sub tier 3 rate set to ' + val);
+              sendChatMessage('Hype meter sub tier 3 rate set to $' + val.toFixed(2));
             }
           }
           break;
@@ -151,6 +177,21 @@ export function processHypeMeter(data: MessageData) {
           updateHypeMeter();
           saveData();
           sendChatMessage('Hype meter reset');
+          break;
+        case 'simbits':
+          if (subArgs[0]) {
+            const val = parseFloat(subArgs[0]);
+            if (val > 0) {
+              applyBits(val);
+            }
+          }
+          break;
+        case 'simsubs':
+          if (subArgs[0]) {
+            const count = parseInt(subArgs[0]);
+            const tier = subArgs[1] ? parseInt(subArgs[1]) : 1;
+            applySubs(count, tier);
+          }
           break;
       }
     }
