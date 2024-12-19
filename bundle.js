@@ -176,6 +176,8 @@ function processHypeMeter(data) {
       const count = parseInt(match[2]);
       const tier = parseInt(match[3]);
       applySubs(count, tier);
+    } else if (match = /^(.*) just subscribed with Twitch Prime!$/.exec(message)) {
+      applySubs(1, 1);
     }
   }
   if (isModerator) {

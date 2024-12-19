@@ -100,6 +100,8 @@ export function processHypeMeter(data: MessageData) {
       const count = parseInt(match[2]);
       const tier = parseInt(match[3]);
       applySubs(count, tier);
+    } else if (match = /^(.*) just subscribed with Twitch Prime!$/.exec(message)) {
+      applySubs(1, 1);
     }
   }
 
@@ -116,6 +118,7 @@ export function processHypeMeter(data: MessageData) {
       const subCommand = args[0];
       const subArgs = args.slice(1);
       switch (subCommand) {
+
         case 'set':
           if (subArgs[0]) {
             const val = parseFloat(subArgs[0]);
@@ -126,9 +129,11 @@ export function processHypeMeter(data: MessageData) {
             }
           }
           break;
+
         case 'reload':
           location.reload();
           break;
+
         case 'bitsrate':
           if (subArgs[0]) {
             const val = parseFloat(subArgs[0]);
@@ -139,6 +144,7 @@ export function processHypeMeter(data: MessageData) {
             }
           }
           break;
+
         case 'subrate1':
           if (subArgs[0]) {
             const val = parseFloat(subArgs[0]);
@@ -149,6 +155,7 @@ export function processHypeMeter(data: MessageData) {
             }
           }
           break;
+
         case 'subrate2':
           if (subArgs[0]) {
             const val = parseFloat(subArgs[0]);
@@ -159,6 +166,7 @@ export function processHypeMeter(data: MessageData) {
             }
           }
           break;
+
         case 'subrate3':
           if (subArgs[0]) {
             const val = parseFloat(subArgs[0]);
@@ -169,15 +177,18 @@ export function processHypeMeter(data: MessageData) {
             }
           }
           break;
+
         case 'config':
           sendChatMessage(`Hype meter bits rate: $${meter.bitsRate}, sub tier 1 rate: $${meter.subTier1Rate}, sub tier 2 rate: $${meter.subTier2Rate}, sub tier 3 rate: $${meter.subTier3Rate}`);
           break;
+
         case 'reset':
           Object.assign(meter, defaults);
           updateHypeMeter();
           saveData();
           sendChatMessage('Hype meter reset');
           break;
+
         case 'simbits':
           if (subArgs[0]) {
             const val = parseFloat(subArgs[0]);
@@ -186,6 +197,7 @@ export function processHypeMeter(data: MessageData) {
             }
           }
           break;
+          
         case 'simsubs':
           if (subArgs[0]) {
             const count = parseInt(subArgs[0]);
