@@ -132,7 +132,9 @@ function updateHypeMeter() {
 }
 function setHypeMeter(value, max) {
   meter.value = value;
-  meter.max = max;
+  if (max !== undefined) {
+    meter.max = max;
+  }
   saveData();
   updateHypeMeter();
 }
@@ -145,6 +147,11 @@ function processHypeMeter(data) {
   const badges = data.payload.event.badges.map((badge) => badge.set_id);
   const isModerator = badges.includes("moderator") || badges.includes("broadcaster");
   const [command, ...args] = message.split(" ");
+  if (data.payload.event.cheer) {
+    const val = Math.min(meter.value + meter.bitsRate * data.payload.event.cheer.bits, meter.max);
+    setHypeMeter(val);
+    sendChatMessage("Hype meter set to " + val);
+  }
   if (isModerator) {
     if ((command === "!sethypemeter" || command === "!sethm") && args[0]) {
       const val = parseFloat(args[0]);
