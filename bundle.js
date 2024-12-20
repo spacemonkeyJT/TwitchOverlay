@@ -52,6 +52,7 @@ function handleWebSocketMessage(data) {
   }
 }
 async function sendChatMessage(chatMessage) {
+  return;
   let response = await fetch("https://api.twitch.tv/helix/chat/messages", {
     method: "POST",
     headers: {
@@ -178,6 +179,8 @@ function processHypeMeter(data) {
       applySubs(count, tier);
     } else if (match = /^(.*) just subscribed with Twitch Prime!$/.exec(message)) {
       applySubs(1, 1);
+    } else if (match = /^(.*) just subscribed with Tier (\d+)!$/.exec(message)) {
+      applySubs(1, parseInt(match[2]));
     }
   }
   if (isModerator) {
