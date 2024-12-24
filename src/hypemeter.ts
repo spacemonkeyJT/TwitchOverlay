@@ -68,14 +68,14 @@ function applySubs(count: number, tier: number) {
   const val = Math.min(meter.value + rate * count, meter.max);
   setHypeMeter(val);
   saveData();
-  sendChatMessage('Hype meter set to $' + val.toFixed(2));
+  // sendChatMessage('Hype meter set to $' + val.toFixed(2));
 }
 
 function applyBits(bits: number) {
   const val = Math.min(meter.value + meter.bitsRate * bits, meter.max);
   setHypeMeter(val);
   saveData();
-  sendChatMessage('Hype meter set to $' + val.toFixed(2));
+  // sendChatMessage('Hype meter set to $' + val.toFixed(2));
 }
 
 export function processHypeMeter(data: MessageData) {
@@ -113,7 +113,7 @@ export function processHypeMeter(data: MessageData) {
       const max = args[1] ? parseFloat(args[1]) : meter.max;
       if (val >= 0 && val <= max) {
         setHypeMeter(val, max);
-        sendChatMessage('Hype meter set to $' + val.toFixed(2));
+        // sendChatMessage('Hype meter set to $' + val.toFixed(2));
       }
     }
     else if (command === '!hm') {
@@ -127,9 +127,13 @@ export function processHypeMeter(data: MessageData) {
             const max = subArgs[1] ? parseFloat(subArgs[1]) : meter.max;
             if (val >= 0 && val <= max) {
               setHypeMeter(val, max);
-              sendChatMessage('Hype meter set to $' + val.toFixed(2));
+              // sendChatMessage('Hype meter set to $' + val.toFixed(2));
             }
           }
+          break;
+
+        case 'get':
+          sendChatMessage('Hype meter is set to $' + meter.value.toFixed(2));
           break;
 
         case 'reload':
@@ -142,7 +146,7 @@ export function processHypeMeter(data: MessageData) {
             if (val > 0) {
               meter.bitsRate = val;
               saveData();
-              sendChatMessage('Hype meter bits rate set to $' + val.toFixed(2));
+              // sendChatMessage('Hype meter bits rate set to $' + val.toFixed(2));
             }
           }
           break;
@@ -153,7 +157,7 @@ export function processHypeMeter(data: MessageData) {
             if (val > 0) {
               meter.subTier1Rate = val;
               saveData();
-              sendChatMessage('Hype meter sub tier 1 rate set to $' + val.toFixed(2));
+              // sendChatMessage('Hype meter sub tier 1 rate set to $' + val.toFixed(2));
             }
           }
           break;
@@ -164,7 +168,7 @@ export function processHypeMeter(data: MessageData) {
             if (val > 0) {
               meter.subTier2Rate = val;
               saveData();
-              sendChatMessage('Hype meter sub tier 2 rate set to $' + val.toFixed(2));
+              // sendChatMessage('Hype meter sub tier 2 rate set to $' + val.toFixed(2));
             }
           }
           break;
@@ -175,7 +179,7 @@ export function processHypeMeter(data: MessageData) {
             if (val > 0) {
               meter.subTier3Rate = val;
               saveData();
-              sendChatMessage('Hype meter sub tier 3 rate set to $' + val.toFixed(2));
+              // sendChatMessage('Hype meter sub tier 3 rate set to $' + val.toFixed(2));
             }
           }
           break;
@@ -188,7 +192,7 @@ export function processHypeMeter(data: MessageData) {
           Object.assign(meter, defaults);
           updateHypeMeter();
           saveData();
-          sendChatMessage('Hype meter reset');
+          // sendChatMessage('Hype meter reset');
           break;
 
         case 'simbits':

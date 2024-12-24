@@ -139,7 +139,6 @@ function handleWebSocketMessage(data: MessageData) {
 }
 
 export async function sendChatMessage(chatMessage: string) {
-  return;
   let response = await fetch('https://api.twitch.tv/helix/chat/messages', {
     method: 'POST',
     headers: {
