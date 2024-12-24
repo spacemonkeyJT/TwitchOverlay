@@ -1,6 +1,7 @@
 import { sendChatMessage, type MessageData } from "./twitch";
 
 const progressbar = document.querySelector<HTMLDivElement>('.progressbar')!
+const progressend = document.querySelector<HTMLDivElement>('.progressend')!
 const label = document.querySelector<HTMLDivElement>('.label')!
 
 type MeterConfig = {
@@ -45,8 +46,9 @@ function loadData() {
 
 function updateHypeMeter() {
   const percent = meter.value / meter.max * 100;
-  progressbar.style.width = `${percent}%`;
-  label.textContent = `$${meter.value.toFixed(2)} / $${meter.max.toFixed(2)}`;
+  progressbar.style.width = `calc(${percent}% - 12px)`;
+  progressend.style.width = `calc(${100-percent}% - 4px)`;
+  label.textContent = `${Math.round(percent)}%`;
 }
 
 function setHypeMeter(value: number, max?: number) {

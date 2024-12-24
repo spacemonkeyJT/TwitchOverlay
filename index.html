@@ -10,22 +10,35 @@
       margin: 0;
       overflow: hidden;
       font-family: sans-serif;
+      background-color: transparent;
     }
 
     .hypemeter {
       position: relative;
       width: 100%;
       height: 100vh;
-      background-color: #000;
+      background-color: transparent;
       color: #fff;
+      background: linear-gradient(90deg, rgba(238,9,138,1) 0%, rgba(7,84,238,1) 100%);
+      border-radius: 20px;
+    }
+
+    .hypemeter .progressend {
+      position: absolute;
+      right: 4px;
+      top: 4px;
+      height: calc(100vh - 8px);
+      background-color: #000;
+      border-radius: 0 20px 20px 0;
     }
 
     .hypemeter .progressbar {
       position: absolute;
-      top: 0;
-      left: 0;
-      height: 100%;
-      background-color: #0a0;
+      top: 4px;
+      left: 4px;
+      height: calc(100% - 16px);
+      border: 4px solid #000;
+      border-radius: 18px;
     }
 
     .hypemeter .label {
@@ -50,6 +63,7 @@
 <body>
   <div class="hypemeter">
     <div class="progressbar"></div>
+    <div class="progressend"></div>
     <div class="label"></div>
   </div>
   <div class="errorPanel"></div>
