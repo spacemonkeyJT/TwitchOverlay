@@ -52,7 +52,6 @@ function handleWebSocketMessage(data) {
   }
 }
 async function sendChatMessage(chatMessage) {
-  return;
   let response = await fetch("https://api.twitch.tv/helix/chat/messages", {
     method: "POST",
     headers: {
@@ -153,13 +152,11 @@ function applySubs(count, tier) {
   const val = Math.min(meter.value + rate * count, meter.max);
   setHypeMeter(val);
   saveData();
-  sendChatMessage("Hype meter set to $" + val.toFixed(2));
 }
 function applyBits(bits) {
   const val = Math.min(meter.value + meter.bitsRate * bits, meter.max);
   setHypeMeter(val);
   saveData();
-  sendChatMessage("Hype meter set to $" + val.toFixed(2));
 }
 function processHypeMeter(data) {
   const message = data.payload.event.message.text.trim();
@@ -189,7 +186,6 @@ function processHypeMeter(data) {
       const max = args[1] ? parseFloat(args[1]) : meter.max;
       if (val >= 0 && val <= max) {
         setHypeMeter(val, max);
-        sendChatMessage("Hype meter set to $" + val.toFixed(2));
       }
     } else if (command === "!hm") {
       const subCommand = args[0];
@@ -201,9 +197,20 @@ function processHypeMeter(data) {
             const max = subArgs[1] ? parseFloat(subArgs[1]) : meter.max;
             if (val >= 0 && val <= max) {
               setHypeMeter(val, max);
-              sendChatMessage("Hype meter set to $" + val.toFixed(2));
             }
           }
+          break;
+        case "add":
+          if (subArgs[0]) {
+            const val = parseFloat(subArgs[0]);
+            if (val >= 0) {
+              const newVal = Math.min(meter.value + val, meter.max);
+              setHypeMeter(newVal);
+            }
+          }
+          break;
+        case "get":
+          sendChatMessage(`Hype meter is at $${meter.value.toFixed(2)} / $${meter.max.toFixed(2)}`);
           break;
         case "reload":
           location.reload();
@@ -214,7 +221,6 @@ function processHypeMeter(data) {
             if (val > 0) {
               meter.bitsRate = val;
               saveData();
-              sendChatMessage("Hype meter bits rate set to $" + val.toFixed(2));
             }
           }
           break;
@@ -224,7 +230,6 @@ function processHypeMeter(data) {
             if (val > 0) {
               meter.subTier1Rate = val;
               saveData();
-              sendChatMessage("Hype meter sub tier 1 rate set to $" + val.toFixed(2));
             }
           }
           break;
@@ -234,7 +239,6 @@ function processHypeMeter(data) {
             if (val > 0) {
               meter.subTier2Rate = val;
               saveData();
-              sendChatMessage("Hype meter sub tier 2 rate set to $" + val.toFixed(2));
             }
           }
           break;
@@ -244,7 +248,6 @@ function processHypeMeter(data) {
             if (val > 0) {
               meter.subTier3Rate = val;
               saveData();
-              sendChatMessage("Hype meter sub tier 3 rate set to $" + val.toFixed(2));
             }
           }
           break;
@@ -255,7 +258,6 @@ function processHypeMeter(data) {
           Object.assign(meter, defaults);
           updateHypeMeter();
           saveData();
-          sendChatMessage("Hype meter reset");
           break;
         case "simbits":
           if (subArgs[0]) {

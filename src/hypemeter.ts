@@ -132,8 +132,19 @@ export function processHypeMeter(data: MessageData) {
           }
           break;
 
+        case 'add':
+          if (subArgs[0]) {
+            const val = parseFloat(subArgs[0]);
+            if (val >= 0) {
+              const newVal = Math.min(meter.value + val, meter.max);
+              setHypeMeter(newVal);
+              // sendChatMessage('Hype meter set to $' + val.toFixed(2));
+            }
+          }
+          break;
+
         case 'get':
-          sendChatMessage('Hype meter is set to $' + meter.value.toFixed(2));
+          sendChatMessage(`Hype meter is at $${meter.value.toFixed(2)} / $${meter.max.toFixed(2)}`);
           break;
 
         case 'reload':
