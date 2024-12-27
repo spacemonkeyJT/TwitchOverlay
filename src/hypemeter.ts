@@ -77,14 +77,14 @@ function applySubs(count: number, tier: number) {
   const val = Math.min(config.value + rate * count, config.max);
   setHypeMeter(val);
   saveData();
-  sendOptionalMessage('Hype meter set to $' + val.toFixed(2));
+  sendOptionalMessage('Hype meter set to ' + val.toFixed(2));
 }
 
 function applyBits(bits: number) {
   const val = Math.min(config.value + config.bitsRate * bits, config.max);
   setHypeMeter(val);
   saveData();
-  sendOptionalMessage('Hype meter set to $' + val.toFixed(2));
+  sendOptionalMessage('Hype meter set to ' + val.toFixed(2));
 }
 
 export function processHypeMeter(data: MessageData) {
@@ -122,7 +122,7 @@ export function processHypeMeter(data: MessageData) {
       const max = args[1] ? parseFloat(args[1]) : config.max;
       if (val >= 0 && val <= max) {
         setHypeMeter(val, max);
-        sendOptionalMessage('Hype meter set to $' + val.toFixed(2));
+        sendOptionalMessage('Hype meter set to ' + val.toFixed(2));
       }
     }
     else if (command === '!hm') {
@@ -136,7 +136,7 @@ export function processHypeMeter(data: MessageData) {
             const max = subArgs[1] ? parseFloat(subArgs[1]) : config.max;
             if (val >= 0 && val <= max) {
               setHypeMeter(val, max);
-              sendOptionalMessage('Hype meter set to $' + val.toFixed(2));
+              sendOptionalMessage('Hype meter set to ' + val.toFixed(2));
             }
           }
           break;
@@ -147,13 +147,13 @@ export function processHypeMeter(data: MessageData) {
             if (val >= 0) {
               const newVal = Math.min(config.value + val, config.max);
               setHypeMeter(newVal);
-              sendOptionalMessage('Hype meter set to $' + val.toFixed(2));
+              sendOptionalMessage('Hype meter set to ' + val.toFixed(2));
             }
           }
           break;
 
         case 'get':
-          sendChatMessage(`Hype meter is at $${config.value.toFixed(2)} / $${config.max.toFixed(2)}`);
+          sendChatMessage(`Hype meter is at ${config.value.toFixed(2)} / ${config.max.toFixed(2)}`);
           break;
 
         case 'reload':
@@ -166,7 +166,7 @@ export function processHypeMeter(data: MessageData) {
             if (val > 0) {
               config.bitsRate = val;
               saveData();
-              sendOptionalMessage('Hype meter bits rate set to $' + val.toFixed(2));
+              sendOptionalMessage('Hype meter bits rate set to ' + val.toFixed(2));
             }
           }
           break;
@@ -177,7 +177,7 @@ export function processHypeMeter(data: MessageData) {
             if (val > 0) {
               config.subTier1Rate = val;
               saveData();
-              sendOptionalMessage('Hype meter sub tier 1 rate set to $' + val.toFixed(2));
+              sendOptionalMessage('Hype meter sub tier 1 rate set to ' + val.toFixed(2));
             }
           }
           break;
@@ -188,7 +188,7 @@ export function processHypeMeter(data: MessageData) {
             if (val > 0) {
               config.subTier2Rate = val;
               saveData();
-              sendOptionalMessage('Hype meter sub tier 2 rate set to $' + val.toFixed(2));
+              sendOptionalMessage('Hype meter sub tier 2 rate set to ' + val.toFixed(2));
             }
           }
           break;
@@ -199,13 +199,13 @@ export function processHypeMeter(data: MessageData) {
             if (val > 0) {
               config.subTier3Rate = val;
               saveData();
-              sendOptionalMessage('Hype meter sub tier 3 rate set to $' + val.toFixed(2));
+              sendOptionalMessage('Hype meter sub tier 3 rate set to ' + val.toFixed(2));
             }
           }
           break;
 
         case 'config':
-          sendChatMessage(`Hype meter bits rate: $${config.bitsRate}, sub tier 1 rate: $${config.subTier1Rate}, sub tier 2 rate: $${config.subTier2Rate}, sub tier 3 rate: $${config.subTier3Rate}`);
+          sendChatMessage(`Hype meter bits rate: ${config.bitsRate}, sub tier 1 rate: ${config.subTier1Rate}, sub tier 2 rate: ${config.subTier2Rate}, sub tier 3 rate: ${config.subTier3Rate}`);
           break;
 
         case 'reset':
