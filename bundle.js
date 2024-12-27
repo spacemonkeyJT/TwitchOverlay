@@ -113,32 +113,33 @@ var defaults = {
   bitsRate: 0.0112,
   subTier1Rate: 3.5,
   subTier2Rate: 7,
-  subTier3Rate: 17.5
+  subTier3Rate: 17.5,
+  optionalMessages: false
 };
-var meter = { ...defaults };
+var config = { ...defaults };
 function saveData() {
-  localStorage.setItem("hypemeter", JSON.stringify(meter));
+  localStorage.setItem("hypemeter", JSON.stringify(config));
 }
 function loadData() {
   try {
     const json = localStorage.getItem("hypemeter");
     if (json) {
       const data = JSON.parse(json);
-      Object.assign(meter, data);
+      Object.assign(config, data);
     }
   } catch (err) {
     console.error(err);
   }
 }
 function updateHypeMeter() {
-  const percent = meter.value / meter.max * 100;
+  const percent = config.value / config.max * 100;
   progressend.style.width = `calc(${100 - percent}% - 4px)`;
   label.textContent = `${Math.round(percent)}%`;
 }
 function setHypeMeter(value, max) {
-  meter.value = value;
+  config.value = value;
   if (max !== undefined) {
-    meter.max = max;
+    config.max = max;
   }
   saveData();
   updateHypeMeter();
@@ -147,16 +148,23 @@ function initHypeMeter() {
   loadData();
   updateHypeMeter();
 }
+function sendOptionalMessage(message) {
+  if (config.optionalMessages) {
+    sendChatMessage(message);
+  }
+}
 function applySubs(count, tier) {
-  const rate = tier === 1 ? meter.subTier1Rate : tier === 2 ? meter.subTier2Rate : meter.subTier3Rate;
-  const val = Math.min(meter.value + rate * count, meter.max);
+  const rate = tier === 1 ? config.subTier1Rate : tier === 2 ? config.subTier2Rate : config.subTier3Rate;
+  const val = Math.min(config.value + rate * count, config.max);
   setHypeMeter(val);
   saveData();
+  sendOptionalMessage("Hype meter set to $" + val.toFixed(2));
 }
 function applyBits(bits) {
-  const val = Math.min(meter.value + meter.bitsRate * bits, meter.max);
+  const val = Math.min(config.value + config.bitsRate * bits, config.max);
   setHypeMeter(val);
   saveData();
+  sendOptionalMessage("Hype meter set to $" + val.toFixed(2));
 }
 function processHypeMeter(data) {
   const message = data.payload.event.message.text.trim();
@@ -183,9 +191,10 @@ function processHypeMeter(data) {
   if (isModerator) {
     if ((command === "!sethypemeter" || command === "!sethm") && args[0]) {
       const val = parseFloat(args[0]);
-      const max = args[1] ? parseFloat(args[1]) : meter.max;
+      const max = args[1] ? parseFloat(args[1]) : config.max;
       if (val >= 0 && val <= max) {
         setHypeMeter(val, max);
+        sendOptionalMessage("Hype meter set to $" + val.toFixed(2));
       }
     } else if (command === "!hm") {
       const subCommand = args[0];
@@ -194,9 +203,10 @@ function processHypeMeter(data) {
         case "set":
           if (subArgs[0]) {
             const val = parseFloat(subArgs[0]);
-            const max = subArgs[1] ? parseFloat(subArgs[1]) : meter.max;
+            const max = subArgs[1] ? parseFloat(subArgs[1]) : config.max;
             if (val >= 0 && val <= max) {
               setHypeMeter(val, max);
+              sendOptionalMessage("Hype meter set to $" + val.toFixed(2));
             }
           }
           break;
@@ -204,13 +214,14 @@ function processHypeMeter(data) {
           if (subArgs[0]) {
             const val = parseFloat(subArgs[0]);
             if (val >= 0) {
-              const newVal = Math.min(meter.value + val, meter.max);
+              const newVal = Math.min(config.value + val, config.max);
               setHypeMeter(newVal);
+              sendOptionalMessage("Hype meter set to $" + val.toFixed(2));
             }
           }
           break;
         case "get":
-          sendChatMessage(`Hype meter is at $${meter.value.toFixed(2)} / $${meter.max.toFixed(2)}`);
+          sendChatMessage(`Hype meter is at $${config.value.toFixed(2)} / $${config.max.toFixed(2)}`);
           break;
         case "reload":
           location.reload();
@@ -219,8 +230,9 @@ function processHypeMeter(data) {
           if (subArgs[0]) {
             const val = parseFloat(subArgs[0]);
             if (val > 0) {
-              meter.bitsRate = val;
+              config.bitsRate = val;
               saveData();
+              sendOptionalMessage("Hype meter bits rate set to $" + val.toFixed(2));
             }
           }
           break;
@@ -228,8 +240,9 @@ function processHypeMeter(data) {
           if (subArgs[0]) {
             const val = parseFloat(subArgs[0]);
             if (val > 0) {
-              meter.subTier1Rate = val;
+              config.subTier1Rate = val;
               saveData();
+              sendOptionalMessage("Hype meter sub tier 1 rate set to $" + val.toFixed(2));
             }
           }
           break;
@@ -237,8 +250,9 @@ function processHypeMeter(data) {
           if (subArgs[0]) {
             const val = parseFloat(subArgs[0]);
             if (val > 0) {
-              meter.subTier2Rate = val;
+              config.subTier2Rate = val;
               saveData();
+              sendOptionalMessage("Hype meter sub tier 2 rate set to $" + val.toFixed(2));
             }
           }
           break;
@@ -246,18 +260,20 @@ function processHypeMeter(data) {
           if (subArgs[0]) {
             const val = parseFloat(subArgs[0]);
             if (val > 0) {
-              meter.subTier3Rate = val;
+              config.subTier3Rate = val;
               saveData();
+              sendOptionalMessage("Hype meter sub tier 3 rate set to $" + val.toFixed(2));
             }
           }
           break;
         case "config":
-          sendChatMessage(`Hype meter bits rate: $${meter.bitsRate}, sub tier 1 rate: $${meter.subTier1Rate}, sub tier 2 rate: $${meter.subTier2Rate}, sub tier 3 rate: $${meter.subTier3Rate}`);
+          sendChatMessage(`Hype meter bits rate: $${config.bitsRate}, sub tier 1 rate: $${config.subTier1Rate}, sub tier 2 rate: $${config.subTier2Rate}, sub tier 3 rate: $${config.subTier3Rate}`);
           break;
         case "reset":
-          Object.assign(meter, defaults);
+          Object.assign(config, defaults);
           updateHypeMeter();
           saveData();
+          sendOptionalMessage("Hype meter reset");
           break;
         case "simbits":
           if (subArgs[0]) {
@@ -272,6 +288,16 @@ function processHypeMeter(data) {
             const count = parseInt(subArgs[0]);
             const tier = subArgs[1] ? parseInt(subArgs[1]) : 1;
             applySubs(count, tier);
+          }
+          break;
+        case "messages":
+          if (subArgs[0] === "enable") {
+            config.optionalMessages = true;
+            saveData();
+            sendOptionalMessage("Optional messages enabled");
+          } else if (subArgs[0] === "disable") {
+            config.optionalMessages = false;
+            saveData();
           }
           break;
       }
