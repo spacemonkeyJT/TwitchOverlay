@@ -132,9 +132,11 @@ function loadData() {
   }
 }
 function updateHypeMeter() {
-  const percent = config.value / config.max * 100;
-  progressend.style.width = `calc(${100 - percent}% - 4px)`;
-  label.textContent = `${Math.round(percent)}%`;
+  const displayValue = Math.min(config.value, config.max);
+  const displayPercent = displayValue / config.max * 100;
+  progressend.style.width = `calc(${100 - displayPercent}% - 4px)`;
+  const realPercent = config.value / config.max * 100;
+  label.textContent = `${Math.round(realPercent)}%`;
 }
 function setHypeMeter(value, max) {
   config.value = value;
@@ -155,13 +157,13 @@ function sendOptionalMessage(message) {
 }
 function applySubs(count, tier) {
   const rate = tier === 1 ? config.subTier1Rate : tier === 2 ? config.subTier2Rate : config.subTier3Rate;
-  const val = Math.min(config.value + rate * count, config.max);
+  const val = config.value + rate * count;
   setHypeMeter(val);
   saveData();
   sendOptionalMessage("Hype meter set to " + val.toFixed(2));
 }
 function applyBits(bits) {
-  const val = Math.min(config.value + config.bitsRate * bits, config.max);
+  const val = config.value + config.bitsRate * bits;
   setHypeMeter(val);
   saveData();
   sendOptionalMessage("Hype meter set to " + val.toFixed(2));
@@ -192,7 +194,7 @@ function processHypeMeter(data) {
     if ((command === "!sethypemeter" || command === "!sethm") && args[0]) {
       const val = parseFloat(args[0]);
       const max = args[1] ? parseFloat(args[1]) : config.max;
-      if (val >= 0 && val <= max) {
+      if (val >= 0) {
         setHypeMeter(val, max);
         sendOptionalMessage("Hype meter set to " + val.toFixed(2));
       }
@@ -204,7 +206,7 @@ function processHypeMeter(data) {
           if (subArgs[0]) {
             const val = parseFloat(subArgs[0]);
             const max = subArgs[1] ? parseFloat(subArgs[1]) : config.max;
-            if (val >= 0 && val <= max) {
+            if (val >= 0) {
               setHypeMeter(val, max);
               sendOptionalMessage("Hype meter set to " + val.toFixed(2));
             }
@@ -213,8 +215,8 @@ function processHypeMeter(data) {
         case "add":
           if (subArgs[0]) {
             const val = parseFloat(subArgs[0]);
-            if (val >= 0) {
-              const newVal = Math.min(config.value + val, config.max);
+            if (!isNaN(val)) {
+              const newVal = config.value + val;
               setHypeMeter(newVal);
               sendOptionalMessage("Hype meter set to " + val.toFixed(2));
             }
