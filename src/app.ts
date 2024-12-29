@@ -1,5 +1,5 @@
 import { processHypeMeter, initHypeMeter } from "./hypemeter"
-import { sendChatMessage, startBot, type MessageData, type Options } from "./twitch"
+import { startBot, type MessageData } from "./twitch"
 
 const errorPanel = document.querySelector<HTMLDivElement>('.errorPanel')!
 
@@ -13,24 +13,20 @@ async function main() {
   try {
     const params = new URLSearchParams(window.location.search);
 
-    const options: Options = {
-      processChatMessage,
-      channel: params.get('channel')!,
-      user_id: params.get('user_id')!,
-      token: params.get('token')!,
-      clientID: params.get('client_id')!,
-    };
+    const channel = params.get('channel');
+    const user_id = params.get('user_id');
+    const token = params.get('token');
+    const clientID = params.get('client_id');
 
-    if (options.user_id && options.token && options.clientID && options.channel) {
-      await startBot(options);
-      initHypeMeter(sendChatMessage);
+    initHypeMeter();
+
+    if (channel && user_id && token && clientID) {
+      await startBot({ processChatMessage, channel, user_id, token, clientID });
     } else {
-      (window as any).chat = (message: string) => {
-        processHypeMeter(message, 'username', ['moderator']);
-      };
-      initHypeMeter(console.log);
+      console.error('Invalid parameters. Chat bot will not start.');
     }
 
+    console.log('For development, use: chat(\'!hm ...\');');
   } catch (err) {
     console.log(err);
     errorPanel.textContent = `${err}`;

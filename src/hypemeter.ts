@@ -1,7 +1,7 @@
+import { sendChatMessage } from "./twitch"
+
 const progress = document.querySelector<HTMLDivElement>('.progress')!
 const label = document.querySelector<HTMLDivElement>('.label')!
-
-let sendChatMessage: (chatMessage: string) => void;
 
 type MeterConfig = {
   value: number,
@@ -63,11 +63,13 @@ function setHypeMeter(value: number, max?: number) {
   updateHypeMeter();
 }
 
-export function initHypeMeter(_sendChatMessage: (chatMessage: string) => void) {
+export function initHypeMeter() {
   loadData();
   updateHypeMeter();
-
-  sendChatMessage = _sendChatMessage;
+  
+  (window as any).chat = (message: string) => {
+    processHypeMeter(message, 'username', ['moderator']);
+  };
 }
 
 function sendOptionalMessage(message: string) {

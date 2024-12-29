@@ -139,26 +139,30 @@ function handleWebSocketMessage(data: MessageData) {
 }
 
 export async function sendChatMessage(chatMessage: string) {
-  let response = await fetch('https://api.twitch.tv/helix/chat/messages', {
-    method: 'POST',
-    headers: {
-      'Authorization': 'Bearer ' + options.token,
-      'Client-Id': options.clientID,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      broadcaster_id: options.channel,
-      sender_id: options.user_id,
-      message: chatMessage
-    })
-  });
+  if (options) {
+    let response = await fetch('https://api.twitch.tv/helix/chat/messages', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + options.token,
+        'Client-Id': options.clientID,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        broadcaster_id: options.channel,
+        sender_id: options.user_id,
+        message: chatMessage
+      })
+    });
 
-  if (response.status != 200) {
-    let data = await response.json();
-    console.error("Failed to send chat message");
-    console.error(data);
+    if (response.status != 200) {
+      let data = await response.json();
+      console.error("Failed to send chat message");
+      console.error(data);
+    } else {
+      console.log("Sent chat message: " + chatMessage);
+    }
   } else {
-    console.log("Sent chat message: " + chatMessage);
+    console.log(chatMessage);
   }
 }
 
