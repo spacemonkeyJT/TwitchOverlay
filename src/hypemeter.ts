@@ -10,7 +10,8 @@ type MeterConfig = {
   subTier1Rate: number,
   subTier2Rate: number,
   subTier3Rate: number,
-  optionalMessages: boolean
+  optionalMessages: boolean,
+  subDetectType: 'event' | 'message',
 }
 
 const defaults: MeterConfig = {
@@ -26,6 +27,7 @@ const defaults: MeterConfig = {
   subTier3Rate: 17.5,
 
   optionalMessages: false,
+  subDetectType: 'event',
 }
 
 const config = { ...defaults };
@@ -83,18 +85,18 @@ function applySubs(count: number, tier: number) {
   const val = config.value + rate * count;
   setHypeMeter(val);
   saveData();
-  sendOptionalMessage('Hype meter set to ' + val.toFixed(2));
+  sendOptionalMessage('Hype meter increased to ' + val.toFixed(2) + ` for ${count} tier ${tier} subs`);
 }
 
 function applyBits(bits: number) {
   const val = config.value + config.bitsRate * bits;
   setHypeMeter(val);
   saveData();
-  sendOptionalMessage('Hype meter set to ' + val.toFixed(2));
+  sendOptionalMessage('Hype meter increased to ' + val.toFixed(2) + ` for ${bits} bits`);
 }
 
 // export function processHypeMeter(data: MessageData) {
-export function processHypeMeter(message: string, username: string, badges: string[], bits?: number) {
+export function processHypeMeter(message: string, username: string, badges: string[], bits?: number, subTier?: number, subCount?: number) {
   const isModerator = badges.includes('moderator') || badges.includes('broadcaster');
 
   const [command, ...args] = message.split(' ');
@@ -103,16 +105,22 @@ export function processHypeMeter(message: string, username: string, badges: stri
     applyBits(bits);
   }
 
-  if (username === 'streamlabs') {
-    let match: RegExpExecArray | null;
-    if (match = /^(.*) just gifted (\d+) Tier (\d+) subscriptions!$/.exec(message)) {
-      const count = parseInt(match[2]);
-      const tier = parseInt(match[3]);
-      applySubs(count, tier);
-    } else if (match = /^(.*) just subscribed with Twitch Prime!$/.exec(message)) {
-      applySubs(1, 1);
-    } else if (match = /^(.*) just subscribed with Tier (\d+)!$/.exec(message)) {
-      applySubs(1, parseInt(match[2]));
+  if (config.subDetectType === 'message') {
+    if (username === 'streamlabs') {
+      let match: RegExpExecArray | null;
+      if (match = /^(.*) just gifted (\d+) Tier (\d+) subscriptions!$/.exec(message)) {
+        const count = parseInt(match[2]);
+        const tier = parseInt(match[3]);
+        applySubs(count, tier);
+      } else if (match = /^(.*) just subscribed with Twitch Prime!$/.exec(message)) {
+        applySubs(1, 1);
+      } else if (match = /^(.*) just subscribed with Tier (\d+)!$/.exec(message)) {
+        applySubs(1, parseInt(match[2]));
+      }
+    }
+  } else if (config.subDetectType === 'event') {
+    if (subTier && subCount) {
+      applySubs(subCount, subTier);
     }
   }
 
@@ -240,6 +248,18 @@ export function processHypeMeter(message: string, username: string, badges: stri
           } else if (subArgs[0] === 'disable') {
             config.optionalMessages = false;
             saveData();
+          }
+          break;
+
+        case 'subdetect':
+          if (subArgs[0] === 'event') {
+            config.subDetectType = 'event';
+            saveData();
+            sendOptionalMessage('Sub detection set to event');
+          } else if (subArgs[0] === 'message') {
+            config.subDetectType = 'message';            
+            saveData();
+            sendOptionalMessage('Sub detection set to message');
           }
           break;
       }

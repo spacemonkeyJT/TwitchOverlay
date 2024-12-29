@@ -41,11 +41,14 @@ function handleWebSocketMessage(data) {
       registerEventSubListeners();
       break;
     case "notification":
-      console.log(data);
+      console.log("notification:", data.metadata.subscription_type, data);
       switch (data.metadata.subscription_type) {
         case "channel.chat.message":
           console.log(`MSG #${data.payload.event.broadcaster_user_login} <${data.payload.event.chatter_user_login}> ${data.payload.event.message.text}`);
           options.processChatMessage(data);
+          break;
+        case "channel.chat.notification":
+          console.log(`NOTIFICATION: ${data.payload.event.type} ${data.payload.event.message}`);
           break;
       }
       break;
@@ -106,6 +109,34 @@ async function registerEventSubListeners() {
     const data = await response.json();
     console.log(`Subscribed to channel.chat.message [${data.data[0].id}]`);
   }
+  response = await fetch("https://api.twitch.tv/helix/eventsub/subscriptions", {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer " + options.token,
+      "Client-Id": options.clientID,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      type: "channel.chat.notification",
+      version: "1",
+      condition: {
+        broadcaster_user_id: options.channel,
+        user_id: options.user_id
+      },
+      transport: {
+        method: "websocket",
+        session_id: websocketSessionID
+      }
+    })
+  });
+  if (response.status != 202) {
+    let data = await response.json();
+    console.error("Failed to subscribe to channel.chat.notification. API call returned status code " + response.status);
+    throw data;
+  } else {
+    const data = await response.json();
+    console.log(`Subscribed to channel.chat.notification [${data.data[0].id}]`);
+  }
 }
 
 // src/hypemeter.ts
@@ -118,7 +149,8 @@ var defaults = {
   subTier1Rate: 3.5,
   subTier2Rate: 7,
   subTier3Rate: 17.5,
-  optionalMessages: false
+  optionalMessages: false,
+  subDetectType: "event"
 };
 var config = { ...defaults };
 function saveData() {
@@ -167,30 +199,36 @@ function applySubs(count, tier) {
   const val = config.value + rate * count;
   setHypeMeter(val);
   saveData();
-  sendOptionalMessage("Hype meter set to " + val.toFixed(2));
+  sendOptionalMessage("Hype meter increased to " + val.toFixed(2) + ` for ${count} tier ${tier} subs`);
 }
 function applyBits(bits) {
   const val = config.value + config.bitsRate * bits;
   setHypeMeter(val);
   saveData();
-  sendOptionalMessage("Hype meter set to " + val.toFixed(2));
+  sendOptionalMessage("Hype meter increased to " + val.toFixed(2) + ` for ${bits} bits`);
 }
-function processHypeMeter(message, username, badges, bits) {
+function processHypeMeter(message, username, badges, bits, subTier, subCount) {
   const isModerator = badges.includes("moderator") || badges.includes("broadcaster");
   const [command, ...args] = message.split(" ");
   if (bits) {
     applyBits(bits);
   }
-  if (username === "streamlabs") {
-    let match;
-    if (match = /^(.*) just gifted (\d+) Tier (\d+) subscriptions!$/.exec(message)) {
-      const count = parseInt(match[2]);
-      const tier = parseInt(match[3]);
-      applySubs(count, tier);
-    } else if (match = /^(.*) just subscribed with Twitch Prime!$/.exec(message)) {
-      applySubs(1, 1);
-    } else if (match = /^(.*) just subscribed with Tier (\d+)!$/.exec(message)) {
-      applySubs(1, parseInt(match[2]));
+  if (config.subDetectType === "message") {
+    if (username === "streamlabs") {
+      let match;
+      if (match = /^(.*) just gifted (\d+) Tier (\d+) subscriptions!$/.exec(message)) {
+        const count = parseInt(match[2]);
+        const tier = parseInt(match[3]);
+        applySubs(count, tier);
+      } else if (match = /^(.*) just subscribed with Twitch Prime!$/.exec(message)) {
+        applySubs(1, 1);
+      } else if (match = /^(.*) just subscribed with Tier (\d+)!$/.exec(message)) {
+        applySubs(1, parseInt(match[2]));
+      }
+    }
+  } else if (config.subDetectType === "event") {
+    if (subTier && subCount) {
+      applySubs(subCount, subTier);
     }
   }
   if (isModerator) {
@@ -305,6 +343,17 @@ function processHypeMeter(message, username, badges, bits) {
             saveData();
           }
           break;
+        case "subdetect":
+          if (subArgs[0] === "event") {
+            config.subDetectType = "event";
+            saveData();
+            sendOptionalMessage("Sub detection set to event");
+          } else if (subArgs[0] === "message") {
+            config.subDetectType = "message";
+            saveData();
+            sendOptionalMessage("Sub detection set to message");
+          }
+          break;
       }
     }
   }
@@ -312,10 +361,47 @@ function processHypeMeter(message, username, badges, bits) {
 
 // src/app.ts
 var errorPanel = document.querySelector(".errorPanel");
+function tierStringToLevel(tier) {
+  switch (tier) {
+    case "1000":
+      return 1;
+    case "2000":
+      return 2;
+    case "3000":
+      return 3;
+    default:
+      return 0;
+  }
+}
 function processChatMessage(data) {
   const message = data.payload.event.message.text.trim();
   const badges = data.payload.event.badges.map((badge) => badge.set_id);
-  processHypeMeter(message, data.payload.event.chatter_user_login, badges, data.payload.event.cheer?.bits);
+  const username = data.payload.event.chatter_user_login;
+  const bits = data.payload.event.cheer?.bits;
+  let subTier = undefined;
+  let subCount = undefined;
+  if (data.payload.event.resub) {
+    subTier = tierStringToLevel(data.payload.event.resub.sub_tier);
+    subCount = data.payload.event.resub.duration_months;
+    console.log(`RESUB: ${subTier} ${subCount}`);
+  } else if (data.payload.event.sub) {
+    subTier = tierStringToLevel(data.payload.event.sub.sub_tier);
+    subCount = data.payload.event.sub.duration_months;
+    console.log(`SUB: ${subTier} ${subCount}`);
+  } else if (data.payload.event.sub_gift) {
+    subTier = tierStringToLevel(data.payload.event.sub_gift.sub_tier);
+    subCount = data.payload.event.sub_gift.duration_months;
+    console.log(`SUB GIFT: ${subTier} ${subCount}`);
+  } else if (data.payload.event.community_sub_gift) {
+    subTier = tierStringToLevel(data.payload.event.community_sub_gift.sub_tier);
+    subCount = data.payload.event.community_sub_gift.total;
+    console.log(`COMMUNITY SUB GIFT: ${subTier} ${subCount}`);
+  } else if (data.payload.event.prime_paid_upgrade) {
+    subTier = tierStringToLevel(data.payload.event.prime_paid_upgrade.sub_tier);
+    subCount = 1;
+    console.log(`PRIME PAID UPGRADE: ${subTier} ${subCount}`);
+  }
+  processHypeMeter(message, username, badges, bits, subTier, subCount);
 }
 async function main() {
   try {

@@ -82,6 +82,7 @@ export type MessageData = {
       id: string
     };
     event: {
+      type: string;
       badges: {
         id: string;
         info: string;
@@ -103,6 +104,53 @@ export type MessageData = {
         fragments: any[];
         text: string
       };
+      notice_type: string;
+      sub?: {
+        sub_tier: string;
+        is_prime: boolean;
+        duration_months: number;
+      };
+      resub?: {
+        cumulative_months: number;
+        duration_months: number;
+        streak_months: number;
+        sub_tier: string;
+        is_gift: boolean;
+        gifter_is_anonymous: boolean;
+        gifter_user_id: string;
+        gifter_user_name: string;
+        gifter_user_login: string;
+      };
+      sub_gift?: {
+        duration_months: number;
+        cumulative_total: number;
+        recipient_user_id: string;
+        recipient_user_name: string;
+        recipient_user_login: string;
+        sub_tier: string;
+        community_gift_id: string;
+      };
+      community_sub_gift?: {
+        id: string;
+        total: number;
+        sub_tier: string;
+        cumulative_total: number;
+      };
+      gift_paid_upgrade?: {
+        gifter_is_anonymous: boolean;
+        gifter_user_id: string;
+        gifter_user_name: string;
+      };
+      prime_paid_upgrade?: {
+        sub_tier: string;
+      };
+      pay_it_forward?: {
+        gifter_is_anonymous: boolean;
+        gifter_user_id: string;
+        gifter_user_name: string;
+        gifter_user_login: string;
+      };
+
       message_id: string;
       message_type: string;
       reply: any;
@@ -124,7 +172,7 @@ function handleWebSocketMessage(data: MessageData) {
       registerEventSubListeners();
       break;
     case 'notification': // An EventSub notification has occurred, such as channel.chat.message
-      console.log(data);
+      console.log('notification:', data.metadata.subscription_type, data);
       switch (data.metadata.subscription_type) {
         case 'channel.chat.message':
           // First, print the message to the program's console.
@@ -132,6 +180,10 @@ function handleWebSocketMessage(data: MessageData) {
 
           options.processChatMessage(data);
 
+          break;
+        case 'channel.chat.notification':
+          // Handle channel.chat.notification event type
+          console.log(`NOTIFICATION: ${data.payload.event.type} ${data.payload.event.message}`);
           break;
       }
       break;
@@ -196,5 +248,36 @@ async function registerEventSubListeners() {
   } else {
     const data = await response.json();
     console.log(`Subscribed to channel.chat.message [${data.data[0].id}]`);
+  }
+
+  // Register channel.chat.notification
+  response = await fetch('https://api.twitch.tv/helix/eventsub/subscriptions', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + options.token,
+      'Client-Id': options.clientID,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      type: 'channel.chat.notification',
+      version: '1',
+      condition: {
+        broadcaster_user_id: options.channel,
+        user_id: options.user_id
+      },
+      transport: {
+        method: 'websocket',
+        session_id: websocketSessionID
+      }
+    })
+  });
+
+  if (response.status != 202) {
+    let data = await response.json();
+    console.error("Failed to subscribe to channel.chat.notification. API call returned status code " + response.status);
+    throw data;
+  } else {
+    const data = await response.json();
+    console.log(`Subscribed to channel.chat.notification [${data.data[0].id}]`);
   }
 }
