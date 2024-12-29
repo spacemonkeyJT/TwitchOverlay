@@ -183,7 +183,8 @@ function handleWebSocketMessage(data: MessageData) {
           break;
         case 'channel.chat.notification':
           // Handle channel.chat.notification event type
-          console.log(`NOTIFICATION: ${data.payload.event.type} ${data.payload.event.message}`);
+          console.log('NOTIFICATION');
+          options.processChatMessage(data);
           break;
       }
       break;

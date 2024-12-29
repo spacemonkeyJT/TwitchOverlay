@@ -48,7 +48,8 @@ function handleWebSocketMessage(data) {
           options.processChatMessage(data);
           break;
         case "channel.chat.notification":
-          console.log(`NOTIFICATION: ${data.payload.event.type} ${data.payload.event.message}`);
+          console.log("NOTIFICATION");
+          options.processChatMessage(data);
           break;
       }
       break;
@@ -382,11 +383,11 @@ function processChatMessage(data) {
   let subCount = undefined;
   if (data.payload.event.resub) {
     subTier = tierStringToLevel(data.payload.event.resub.sub_tier);
-    subCount = data.payload.event.resub.duration_months;
+    subCount = 1;
     console.log(`RESUB: ${subTier} ${subCount}`);
   } else if (data.payload.event.sub) {
     subTier = tierStringToLevel(data.payload.event.sub.sub_tier);
-    subCount = data.payload.event.sub.duration_months;
+    subCount = 1;
     console.log(`SUB: ${subTier} ${subCount}`);
   } else if (data.payload.event.sub_gift) {
     subTier = tierStringToLevel(data.payload.event.sub_gift.sub_tier);
