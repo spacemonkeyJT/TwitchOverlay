@@ -1,10 +1,12 @@
 import { processHypeMeter, initHypeMeter } from "./hypemeter"
-import { startBot, type MessageData, type Options } from "./twitch"
+import { sendChatMessage, startBot, type MessageData, type Options } from "./twitch"
 
 const errorPanel = document.querySelector<HTMLDivElement>('.errorPanel')!
 
 function processChatMessage(data: MessageData) {
-  processHypeMeter(data);
+  const message = data.payload.event.message.text.trim();
+  const badges = data.payload.event.badges.map(badge => badge.set_id);
+  processHypeMeter(message, data.payload.event.chatter_user_login, badges, data.payload.event.cheer?.bits);
 }
 
 async function main() {
@@ -19,14 +21,16 @@ async function main() {
       clientID: params.get('client_id')!,
     };
 
-    if (!options.user_id) throw Error('Missing user_id parameter.');
-    if (!options.token) throw Error('Missing token parameter.');
-    if (!options.clientID) throw Error('Missing client_id parameter.');
-    if (!options.channel) throw Error('Missing channel parameter.');
+    if (options.user_id && options.token && options.clientID && options.channel) {
+      await startBot(options);
+      initHypeMeter(sendChatMessage);
+    } else {
+      (window as any).chat = (message: string) => {
+        processHypeMeter(message, 'username', ['moderator']);
+      };
+      initHypeMeter(console.log);
+    }
 
-    await startBot(options);
-
-    initHypeMeter();
   } catch (err) {
     console.log(err);
     errorPanel.textContent = `${err}`;

@@ -1,7 +1,7 @@
-import { sendChatMessage, type MessageData } from "./twitch";
-
-const progressend = document.querySelector<HTMLDivElement>('.progressend')!
+const progress = document.querySelector<HTMLDivElement>('.progress')!
 const label = document.querySelector<HTMLDivElement>('.label')!
+
+let sendChatMessage: (chatMessage: string) => void;
 
 type MeterConfig = {
   value: number,
@@ -49,7 +49,7 @@ function loadData() {
 function updateHypeMeter() {
   const displayValue = Math.min(config.value, config.max);
   const displayPercent = displayValue / config.max * 100;
-  progressend.style.width = `calc(${100-displayPercent}% - 4px)`;
+  progress.style.width = `calc(${displayPercent}% - 16px)`;
   const realPercent = config.value / config.max * 100;
   label.textContent = `${Math.round(realPercent)}%`;
 }
@@ -63,9 +63,11 @@ function setHypeMeter(value: number, max?: number) {
   updateHypeMeter();
 }
 
-export function initHypeMeter() {
+export function initHypeMeter(_sendChatMessage: (chatMessage: string) => void) {
   loadData();
   updateHypeMeter();
+
+  sendChatMessage = _sendChatMessage;
 }
 
 function sendOptionalMessage(message: string) {
@@ -89,23 +91,17 @@ function applyBits(bits: number) {
   sendOptionalMessage('Hype meter set to ' + val.toFixed(2));
 }
 
-export function processHypeMeter(data: MessageData) {
-  const message = data.payload.event.message.text.trim();
-
-  const badges = data.payload.event.badges.map(badge => badge.set_id);
+// export function processHypeMeter(data: MessageData) {
+export function processHypeMeter(message: string, username: string, badges: string[], bits?: number) {
   const isModerator = badges.includes('moderator') || badges.includes('broadcaster');
 
   const [command, ...args] = message.split(' ');
 
-  const { cheer } = data.payload.event;;
-
-  const { chatter_user_login } = data.payload.event;
-
-  if (cheer) {
-    applyBits(cheer.bits);
+  if (bits) {
+    applyBits(bits);
   }
 
-  if (chatter_user_login === 'streamlabs') {
+  if (username === 'streamlabs') {
     let match: RegExpExecArray | null;
     if (match = /^(.*) just gifted (\d+) Tier (\d+) subscriptions!$/.exec(message)) {
       const count = parseInt(match[2]);

@@ -1,112 +1,7 @@
-// src/twitch.ts
-var EVENTSUB_WEBSOCKET_URL = "wss://eventsub.wss.twitch.tv/ws";
-var websocketSessionID;
-var websocketClient;
-var options;
-async function startBot(_options) {
-  options = _options;
-  await getAuth();
-  websocketClient = startWebSocketClient();
-}
-async function getAuth() {
-  let response = await fetch("https://id.twitch.tv/oauth2/validate", {
-    method: "GET",
-    headers: {
-      Authorization: "OAuth " + options.token
-    }
-  });
-  if (response.status != 200) {
-    let data = await response.json();
-    console.error("Token is not valid. /oauth2/validate returned status code " + response.status);
-    throw Error(data);
-  }
-  console.log("Validated token.");
-}
-function startWebSocketClient() {
-  let websocketClient2 = new WebSocket(EVENTSUB_WEBSOCKET_URL);
-  console.log(websocketClient2);
-  websocketClient2.addEventListener("error", console.error);
-  websocketClient2.addEventListener("open", () => {
-    console.log("WebSocket connection opened to " + EVENTSUB_WEBSOCKET_URL);
-  });
-  websocketClient2.addEventListener("message", (msg) => {
-    handleWebSocketMessage(JSON.parse(msg.data.toString()));
-  });
-  return websocketClient2;
-}
-function handleWebSocketMessage(data) {
-  switch (data.metadata.message_type) {
-    case "session_welcome":
-      websocketSessionID = data.payload.session.id;
-      registerEventSubListeners();
-      break;
-    case "notification":
-      console.log(data);
-      switch (data.metadata.subscription_type) {
-        case "channel.chat.message":
-          console.log(`MSG #${data.payload.event.broadcaster_user_login} <${data.payload.event.chatter_user_login}> ${data.payload.event.message.text}`);
-          options.processChatMessage(data);
-          break;
-      }
-      break;
-  }
-}
-async function sendChatMessage(chatMessage) {
-  let response = await fetch("https://api.twitch.tv/helix/chat/messages", {
-    method: "POST",
-    headers: {
-      Authorization: "Bearer " + options.token,
-      "Client-Id": options.clientID,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      broadcaster_id: options.channel,
-      sender_id: options.user_id,
-      message: chatMessage
-    })
-  });
-  if (response.status != 200) {
-    let data = await response.json();
-    console.error("Failed to send chat message");
-    console.error(data);
-  } else {
-    console.log("Sent chat message: " + chatMessage);
-  }
-}
-async function registerEventSubListeners() {
-  let response = await fetch("https://api.twitch.tv/helix/eventsub/subscriptions", {
-    method: "POST",
-    headers: {
-      Authorization: "Bearer " + options.token,
-      "Client-Id": options.clientID,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      type: "channel.chat.message",
-      version: "1",
-      condition: {
-        broadcaster_user_id: options.channel,
-        user_id: options.user_id
-      },
-      transport: {
-        method: "websocket",
-        session_id: websocketSessionID
-      }
-    })
-  });
-  if (response.status != 202) {
-    let data = await response.json();
-    console.error("Failed to subscribe to channel.chat.message. API call returned status code " + response.status);
-    throw data;
-  } else {
-    const data = await response.json();
-    console.log(`Subscribed to channel.chat.message [${data.data[0].id}]`);
-  }
-}
-
 // src/hypemeter.ts
-var progressend = document.querySelector(".progressend");
+var progress = document.querySelector(".progress");
 var label = document.querySelector(".label");
+var sendChatMessage;
 var defaults = {
   value: 50,
   max: 300,
@@ -134,7 +29,7 @@ function loadData() {
 function updateHypeMeter() {
   const displayValue = Math.min(config.value, config.max);
   const displayPercent = displayValue / config.max * 100;
-  progressend.style.width = `calc(${100 - displayPercent}% - 4px)`;
+  progress.style.width = `calc(${displayPercent}% - 16px)`;
   const realPercent = config.value / config.max * 100;
   label.textContent = `${Math.round(realPercent)}%`;
 }
@@ -146,9 +41,10 @@ function setHypeMeter(value, max) {
   saveData();
   updateHypeMeter();
 }
-function initHypeMeter() {
+function initHypeMeter(_sendChatMessage) {
   loadData();
   updateHypeMeter();
+  sendChatMessage = _sendChatMessage;
 }
 function sendOptionalMessage(message) {
   if (config.optionalMessages) {
@@ -168,17 +64,13 @@ function applyBits(bits) {
   saveData();
   sendOptionalMessage("Hype meter set to " + val.toFixed(2));
 }
-function processHypeMeter(data) {
-  const message = data.payload.event.message.text.trim();
-  const badges = data.payload.event.badges.map((badge) => badge.set_id);
+function processHypeMeter(message, username, badges, bits) {
   const isModerator = badges.includes("moderator") || badges.includes("broadcaster");
   const [command, ...args] = message.split(" ");
-  const { cheer } = data.payload.event;
-  const { chatter_user_login } = data.payload.event;
-  if (cheer) {
-    applyBits(cheer.bits);
+  if (bits) {
+    applyBits(bits);
   }
-  if (chatter_user_login === "streamlabs") {
+  if (username === "streamlabs") {
     let match;
     if (match = /^(.*) just gifted (\d+) Tier (\d+) subscriptions!$/.exec(message)) {
       const count = parseInt(match[2]);
@@ -307,10 +199,118 @@ function processHypeMeter(data) {
   }
 }
 
+// src/twitch.ts
+var EVENTSUB_WEBSOCKET_URL = "wss://eventsub.wss.twitch.tv/ws";
+var websocketSessionID;
+var websocketClient;
+var options;
+async function startBot(_options) {
+  options = _options;
+  await getAuth();
+  websocketClient = startWebSocketClient();
+}
+async function getAuth() {
+  let response = await fetch("https://id.twitch.tv/oauth2/validate", {
+    method: "GET",
+    headers: {
+      Authorization: "OAuth " + options.token
+    }
+  });
+  if (response.status != 200) {
+    let data = await response.json();
+    console.error("Token is not valid. /oauth2/validate returned status code " + response.status);
+    throw Error(data);
+  }
+  console.log("Validated token.");
+}
+function startWebSocketClient() {
+  let websocketClient2 = new WebSocket(EVENTSUB_WEBSOCKET_URL);
+  console.log(websocketClient2);
+  websocketClient2.addEventListener("error", console.error);
+  websocketClient2.addEventListener("open", () => {
+    console.log("WebSocket connection opened to " + EVENTSUB_WEBSOCKET_URL);
+  });
+  websocketClient2.addEventListener("message", (msg) => {
+    handleWebSocketMessage(JSON.parse(msg.data.toString()));
+  });
+  return websocketClient2;
+}
+function handleWebSocketMessage(data) {
+  switch (data.metadata.message_type) {
+    case "session_welcome":
+      websocketSessionID = data.payload.session.id;
+      registerEventSubListeners();
+      break;
+    case "notification":
+      console.log(data);
+      switch (data.metadata.subscription_type) {
+        case "channel.chat.message":
+          console.log(`MSG #${data.payload.event.broadcaster_user_login} <${data.payload.event.chatter_user_login}> ${data.payload.event.message.text}`);
+          options.processChatMessage(data);
+          break;
+      }
+      break;
+  }
+}
+async function sendChatMessage2(chatMessage) {
+  let response = await fetch("https://api.twitch.tv/helix/chat/messages", {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer " + options.token,
+      "Client-Id": options.clientID,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      broadcaster_id: options.channel,
+      sender_id: options.user_id,
+      message: chatMessage
+    })
+  });
+  if (response.status != 200) {
+    let data = await response.json();
+    console.error("Failed to send chat message");
+    console.error(data);
+  } else {
+    console.log("Sent chat message: " + chatMessage);
+  }
+}
+async function registerEventSubListeners() {
+  let response = await fetch("https://api.twitch.tv/helix/eventsub/subscriptions", {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer " + options.token,
+      "Client-Id": options.clientID,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      type: "channel.chat.message",
+      version: "1",
+      condition: {
+        broadcaster_user_id: options.channel,
+        user_id: options.user_id
+      },
+      transport: {
+        method: "websocket",
+        session_id: websocketSessionID
+      }
+    })
+  });
+  if (response.status != 202) {
+    let data = await response.json();
+    console.error("Failed to subscribe to channel.chat.message. API call returned status code " + response.status);
+    throw data;
+  } else {
+    const data = await response.json();
+    console.log(`Subscribed to channel.chat.message [${data.data[0].id}]`);
+  }
+}
+
 // src/app.ts
 var errorPanel = document.querySelector(".errorPanel");
 function processChatMessage(data) {
-  processHypeMeter(data);
+  const message = data.payload.event.message.text.trim();
+  const badges = data.payload.event.badges.map((badge) => badge.set_id);
+  processHypeMeter(message, data.payload.event.chatter_user_login, badges, data.payload.event.cheer?.bits);
 }
 async function main() {
   try {
@@ -322,16 +322,15 @@ async function main() {
       token: params.get("token"),
       clientID: params.get("client_id")
     };
-    if (!options2.user_id)
-      throw Error("Missing user_id parameter.");
-    if (!options2.token)
-      throw Error("Missing token parameter.");
-    if (!options2.clientID)
-      throw Error("Missing client_id parameter.");
-    if (!options2.channel)
-      throw Error("Missing channel parameter.");
-    await startBot(options2);
-    initHypeMeter();
+    if (options2.user_id && options2.token && options2.clientID && options2.channel) {
+      await startBot(options2);
+      initHypeMeter(sendChatMessage2);
+    } else {
+      window.chat = (message) => {
+        processHypeMeter(message, "username", ["moderator"]);
+      };
+      initHypeMeter(console.log);
+    }
   } catch (err) {
     console.log(err);
     errorPanel.textContent = `${err}`;
