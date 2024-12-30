@@ -37,10 +37,15 @@ function processChatMessage(data: MessageData) {
     subTier = tierStringToLevel(data.payload.event.sub_gift.sub_tier);
     subCount = data.payload.event.sub_gift.duration_months;
     console.log(`SUB GIFT: ${subTier} ${subCount}`);
+
+  // Disabled because the community sub gift event seems to give a single notification
+  // that has the count of subs gifted, and we also get individual sub gift notifications,
+  // which would double the count.
   // } else if (data.payload.event.community_sub_gift) {
   //   subTier = tierStringToLevel(data.payload.event.community_sub_gift.sub_tier);
   //   subCount = data.payload.event.community_sub_gift.total;
   //   console.log(`COMMUNITY SUB GIFT: ${subTier} ${subCount}`);
+
   } else if (data.payload.event.prime_paid_upgrade) {
     subTier = tierStringToLevel(data.payload.event.prime_paid_upgrade.sub_tier);
     subCount = 1;
