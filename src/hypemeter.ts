@@ -220,7 +220,7 @@ export function processHypeMeter(message: string, username: string, badges: stri
           Object.assign(config, defaults);
           updateHypeMeter();
           saveData();
-          sendOptionalMessage('Hype meter reset');
+          sendOptionalMessage('Hype meter reset to default values');
           break;
 
         case 'simbits':
@@ -261,6 +261,12 @@ export function processHypeMeter(message: string, username: string, badges: stri
             saveData();
             sendOptionalMessage('Sub detection set to message');
           }
+          break;
+
+        case 'complete':
+          config.value = config.value % config.max;
+          updateHypeMeter();
+          saveData();
           break;
       }
     }

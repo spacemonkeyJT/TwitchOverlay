@@ -317,7 +317,7 @@ function processHypeMeter(message, username, badges, bits, subTier, subCount) {
           Object.assign(config, defaults);
           updateHypeMeter();
           saveData();
-          sendOptionalMessage("Hype meter reset");
+          sendOptionalMessage("Hype meter reset to default values");
           break;
         case "simbits":
           if (subArgs[0]) {
@@ -354,6 +354,11 @@ function processHypeMeter(message, username, badges, bits, subTier, subCount) {
             saveData();
             sendOptionalMessage("Sub detection set to message");
           }
+          break;
+        case "complete":
+          config.value = config.value % config.max;
+          updateHypeMeter();
+          saveData();
           break;
       }
     }
