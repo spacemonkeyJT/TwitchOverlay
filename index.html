@@ -6,6 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Document</title>
   <style>
+    :root {
+      --hm-background: linear-gradient(90deg, rgba(238,9,138,1) 0%, rgba(7,84,238,1) 100%);
+    }
+
     body {
       margin: 0;
       overflow: hidden;
@@ -19,7 +23,7 @@
       height: 100vh;
       background-color: transparent;
       color: #fff;
-      background: linear-gradient(90deg, rgba(238,9,138,1) 0%, rgba(7,84,238,1) 100%);
+      background: var(--hm-background);
       border-radius: 20px;
     }
 
@@ -29,7 +33,7 @@
       left: 8px;
       width: calc(100% - 16px);
       height: calc(100vh - 16px);
-      background: linear-gradient(90deg, rgba(238,9,138,1) 0%, rgba(7,84,238,1) 100%);
+      background: var(--hm-background);
       border-radius: 15px;
       background-size: 100vw 100%;
       background-clip: content-box;
