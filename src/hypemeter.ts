@@ -264,9 +264,9 @@ export function processHypeMeter(message: string, username: string, badges: stri
           break;
 
         case 'complete':
-          config.value = config.value % config.max;
-          updateHypeMeter();
-          saveData();
+          const val = config.value % config.max;
+          const max = subArgs[0] ? parseFloat(subArgs[0]) : config.max;
+          setHypeMeter(val, max);
           break;
       }
     }

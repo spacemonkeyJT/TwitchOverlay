@@ -246,21 +246,21 @@ function processHypeMeter(message, username, badges, bits, subTier, subCount) {
       switch (subCommand) {
         case "set":
           if (subArgs[0]) {
-            const val = parseFloat(subArgs[0]);
-            const max = subArgs[1] ? parseFloat(subArgs[1]) : config.max;
-            if (val >= 0) {
-              setHypeMeter(val, max);
-              sendOptionalMessage("Hype meter set to " + val.toFixed(2));
+            const val2 = parseFloat(subArgs[0]);
+            const max2 = subArgs[1] ? parseFloat(subArgs[1]) : config.max;
+            if (val2 >= 0) {
+              setHypeMeter(val2, max2);
+              sendOptionalMessage("Hype meter set to " + val2.toFixed(2));
             }
           }
           break;
         case "add":
           if (subArgs[0]) {
-            const val = parseFloat(subArgs[0]);
-            if (!isNaN(val)) {
-              const newVal = config.value + val;
+            const val2 = parseFloat(subArgs[0]);
+            if (!isNaN(val2)) {
+              const newVal = config.value + val2;
               setHypeMeter(newVal);
-              sendOptionalMessage("Hype meter set to " + val.toFixed(2));
+              sendOptionalMessage("Hype meter set to " + val2.toFixed(2));
             }
           }
           break;
@@ -272,41 +272,41 @@ function processHypeMeter(message, username, badges, bits, subTier, subCount) {
           break;
         case "bitsrate":
           if (subArgs[0]) {
-            const val = parseFloat(subArgs[0]);
-            if (val > 0) {
-              config.bitsRate = val;
+            const val2 = parseFloat(subArgs[0]);
+            if (val2 > 0) {
+              config.bitsRate = val2;
               saveData();
-              sendOptionalMessage("Hype meter bits rate set to " + val.toFixed(2));
+              sendOptionalMessage("Hype meter bits rate set to " + val2.toFixed(2));
             }
           }
           break;
         case "subrate1":
           if (subArgs[0]) {
-            const val = parseFloat(subArgs[0]);
-            if (val > 0) {
-              config.subTier1Rate = val;
+            const val2 = parseFloat(subArgs[0]);
+            if (val2 > 0) {
+              config.subTier1Rate = val2;
               saveData();
-              sendOptionalMessage("Hype meter sub tier 1 rate set to " + val.toFixed(2));
+              sendOptionalMessage("Hype meter sub tier 1 rate set to " + val2.toFixed(2));
             }
           }
           break;
         case "subrate2":
           if (subArgs[0]) {
-            const val = parseFloat(subArgs[0]);
-            if (val > 0) {
-              config.subTier2Rate = val;
+            const val2 = parseFloat(subArgs[0]);
+            if (val2 > 0) {
+              config.subTier2Rate = val2;
               saveData();
-              sendOptionalMessage("Hype meter sub tier 2 rate set to " + val.toFixed(2));
+              sendOptionalMessage("Hype meter sub tier 2 rate set to " + val2.toFixed(2));
             }
           }
           break;
         case "subrate3":
           if (subArgs[0]) {
-            const val = parseFloat(subArgs[0]);
-            if (val > 0) {
-              config.subTier3Rate = val;
+            const val2 = parseFloat(subArgs[0]);
+            if (val2 > 0) {
+              config.subTier3Rate = val2;
               saveData();
-              sendOptionalMessage("Hype meter sub tier 3 rate set to " + val.toFixed(2));
+              sendOptionalMessage("Hype meter sub tier 3 rate set to " + val2.toFixed(2));
             }
           }
           break;
@@ -321,9 +321,9 @@ function processHypeMeter(message, username, badges, bits, subTier, subCount) {
           break;
         case "simbits":
           if (subArgs[0]) {
-            const val = parseFloat(subArgs[0]);
-            if (val > 0) {
-              applyBits(val);
+            const val2 = parseFloat(subArgs[0]);
+            if (val2 > 0) {
+              applyBits(val2);
             }
           }
           break;
@@ -356,9 +356,9 @@ function processHypeMeter(message, username, badges, bits, subTier, subCount) {
           }
           break;
         case "complete":
-          config.value = config.value % config.max;
-          updateHypeMeter();
-          saveData();
+          const val = config.value % config.max;
+          const max = subArgs[0] ? parseFloat(subArgs[0]) : config.max;
+          setHypeMeter(val, max);
           break;
       }
     }
