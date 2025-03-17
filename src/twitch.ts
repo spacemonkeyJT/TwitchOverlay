@@ -296,6 +296,19 @@ export function tierStringToLevel(tier: string): number {
   }
 }
 
+export async function getClip(clipId: string) {
+  const res: Response = await fetch(`https://api.twitch.tv/helix/clips?id=${clipId}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': 'Bearer ' + options.token,
+      'Client-Id': options.clientID,
+      'Content-Type': 'application/json'
+    }
+  });
+  const body = await res.json();
+  return body.data[0];
+}
+
 export async function getClips(userId: string) {
   let pagination = null;
   let clips: any[] = [];

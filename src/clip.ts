@@ -1,17 +1,17 @@
-import { getClips, getClipStreamURL, getUserId, sendChatMessage, type MessageData } from "./twitch";
+import { getClip, getClips, getClipStreamURL, getUserId, sendChatMessage, type MessageData } from "./twitch";
 
 const clipPanel = document.querySelector<HTMLDivElement>('.clip')!
 const clipVideo = document.querySelector<HTMLVideoElement>('.clipVideo')!
+const clipTitle = document.querySelector<HTMLDivElement>('.clipTitle')!
 
-let hideTimer: Timer | null = null;
 let channelId: string;
 
 export function initClip(_channelId: string) {
   channelId = _channelId;
-  clipPanel.style.display = 'block';
 
   clipVideo.onended = () => {
     clipVideo.src = '';
+    clipPanel.style.display = 'none';
   }
 
   (window as any).chat = (message: string) => {
@@ -19,36 +19,43 @@ export function initClip(_channelId: string) {
   };
 }
 
-function getClipIdFromUrl(url: string) {
+async function getClipFromUrl(url: string) {
   // Twitch clip links can be of two formats, e.g.:
   // https://www.twitch.tv/kmrkle/clip/ConcernedObedientLobsterPastaThat-Z0PBQy-JhuWWYsTF
   // https://clips.twitch.tv/ConcernedObedientLobsterPastaThat-Z0PBQy-JhuWWYsTF
 
+  let clipId: string | null = null;
+
   const match = /^https:\/\/clips\.twitch\.tv\/(.*)$/i.exec(url);
   if (match) {
-    return match[1];
+    clipId = match[1];
+  } else {
+    const match2 = /^https:\/\/www\.twitch\.tv\/.*?\/clip\/(.*)$/i.exec(url);
+    if (match2) {
+      clipId = match2[1];
+    }
   }
 
-  const match2 = /^https:\/\/www\.twitch\.tv\/.*?\/clip\/(.*)$/i.exec(url);
-  if (match2) {
-    return match2[1];
+  if (clipId) {
+    return await getClip(clipId);
   }
 
-  return '';
+  return null;
 }
 
 const clipCache: {
   [username: string]: any[]
 } = {};
 
-async function getClipIdFromUserId(userId: string) {
+async function getRandomClipForUser(userId: string) {
   console.log(`Getting clip for user ${userId}`);
   if (!clipCache[userId]) {
+    console.log('Fetching all clips');
     clipCache[userId] = await getClips(userId);
   }
   const clips = clipCache[userId];
   const randomIndex = Math.floor(Math.random() * clips.length);
-  return clips[randomIndex].id;
+  return clips[randomIndex];
 }
 
 async function processChatCommand(message: string, badges: string[]) {
@@ -56,10 +63,10 @@ async function processChatCommand(message: string, badges: string[]) {
   const [command, ...args] = message.split(' ');
   let isUrl = false;
   if (command === '!showclip' && isModerator) {
-    let clipId: string | null = null;
+    let clip: any = null;
     if (args[0]) {
-      clipId = getClipIdFromUrl(args[0]);
-      if (clipId) {
+      clip = await getClipFromUrl(args[0]);
+      if (clip) {
         isUrl = true;
       } else {
         let username = args[0];
@@ -68,21 +75,22 @@ async function processChatCommand(message: string, badges: string[]) {
         }
         const userId = await getUserId(username);
         if (userId) {
-          clipId = await getClipIdFromUserId(userId);
+          clip = await getRandomClipForUser(userId);
         }
       }
     } else {
-      clipId = await getClipIdFromUserId(channelId);
+      clip = await getRandomClipForUser(channelId);
     }
-    if (clipId) {
+    if (clip) {
+      console.log(clip);
       if (!isUrl) {
-        console.log('Clip ID:', clipId);
-        const clipUrl = `https://clips.twitch.tv/${clipId}`;
-        console.log(clipUrl);
+        const clipUrl = `https://clips.twitch.tv/${clip.id}`;
         await sendChatMessage(`Playing clip: ${clipUrl}`);
       }
-      const videoUrl = await getClipStreamURL(clipId);
+      const videoUrl = await getClipStreamURL(clip.id);
       clipVideo.src = videoUrl;
+      clipTitle.innerText = `${clip.title} - clipped by ${clip.creator_name}`;
+      clipPanel.style.display = 'block';
     }
   }
 }
