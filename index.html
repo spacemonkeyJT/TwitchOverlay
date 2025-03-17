@@ -25,6 +25,7 @@
       color: #fff;
       background: var(--hm-background);
       border-radius: 20px;
+      display: none;
     }
 
     .hypemeter .progress {
@@ -67,6 +68,33 @@
       font-weight: bold;
       display: none;
     }
+
+    .clip {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100vh;
+      display: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .clipFrame {
+      width: 100%;
+      height: 100vh;
+      border: 0;
+      padding: 0;
+      margin: 0;
+    }
+
+    .clipVideo {
+      width: 100%;
+      height: 100vh;
+      border: 0;
+      padding: 0;
+      margin: 0;
+    }
   </style>
 </head>
 
@@ -75,6 +103,9 @@
     <div class="inner"></div>
     <div class="progress"></div>
     <div class="label"></div>
+  </div>
+  <div class="clip">
+    <video class="clipVideo" autoplay="true"></video>
   </div>
   <div class="errorPanel"></div>
   <script src="bundle.js"></script>

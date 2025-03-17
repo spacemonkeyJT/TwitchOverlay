@@ -1,7 +1,8 @@
-import { sendChatMessage } from "./twitch"
+import { sendChatMessage, tierStringToLevel, type MessageData } from "./twitch"
 
 const progress = document.querySelector<HTMLDivElement>('.progress')!
 const label = document.querySelector<HTMLDivElement>('.label')!
+const hypemeter = document.querySelector<HTMLDivElement>('.hypemeter')!
 
 type MeterConfig = {
   value: number,
@@ -66,6 +67,8 @@ function setHypeMeter(value: number, max?: number) {
 }
 
 export function initHypeMeter() {
+  hypemeter.style.display = 'block';
+
   loadData();
   updateHypeMeter();
   
@@ -95,7 +98,6 @@ function applyBits(bits: number) {
   sendOptionalMessage('Hype meter increased to ' + val.toFixed(2) + ` for ${bits} bits`);
 }
 
-// export function processHypeMeter(data: MessageData) {
 export function processHypeMeter(message: string, username: string, badges: string[], bits?: number, subTier?: number, subCount?: number) {
   const isModerator = badges.includes('moderator') || badges.includes('broadcaster');
 
@@ -271,4 +273,43 @@ export function processHypeMeter(message: string, username: string, badges: stri
       }
     }
   }
+}
+
+export function processHypeMeterChatMessage(data: MessageData) {
+  const message = data.payload.event.message.text.trim();
+  const badges = data.payload.event.badges.map(badge => badge.set_id);
+  const username = data.payload.event.chatter_user_login;
+  const bits = data.payload.event.cheer?.bits;
+
+  let subTier: number | undefined = undefined;
+  let subCount: number | undefined = undefined;
+
+  if (data.payload.event.resub) {
+    subTier = tierStringToLevel(data.payload.event.resub.sub_tier);
+    subCount = 1;
+    console.log(`RESUB: ${subTier} ${subCount}`);
+  } else if (data.payload.event.sub) {
+    subTier = tierStringToLevel(data.payload.event.sub.sub_tier);
+    subCount = 1;
+    console.log(`SUB: ${subTier} ${subCount}`);
+  } else if (data.payload.event.sub_gift) {
+    subTier = tierStringToLevel(data.payload.event.sub_gift.sub_tier);
+    subCount = data.payload.event.sub_gift.duration_months;
+    console.log(`SUB GIFT: ${subTier} ${subCount}`);
+
+  // Disabled because the community sub gift event seems to give a single notification
+  // that has the count of subs gifted, and we also get individual sub gift notifications,
+  // which would double the count.
+  // } else if (data.payload.event.community_sub_gift) {
+  //   subTier = tierStringToLevel(data.payload.event.community_sub_gift.sub_tier);
+  //   subCount = data.payload.event.community_sub_gift.total;
+  //   console.log(`COMMUNITY SUB GIFT: ${subTier} ${subCount}`);
+
+  } else if (data.payload.event.prime_paid_upgrade) {
+    subTier = tierStringToLevel(data.payload.event.prime_paid_upgrade.sub_tier);
+    subCount = 1;
+    console.log(`PRIME PAID UPGRADE: ${subTier} ${subCount}`);
+  }
+
+  processHypeMeter(message, username, badges, bits, subTier, subCount);
 }

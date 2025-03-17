@@ -282,3 +282,110 @@ async function registerEventSubListeners() {
     console.log(`Subscribed to channel.chat.notification [${data.data[0].id}]`);
   }
 }
+
+export function tierStringToLevel(tier: string): number {
+  switch (tier) {
+    case '1000':
+      return 1;
+    case '2000':
+      return 2;
+    case '3000':
+      return 3;
+    default:
+      return 0;
+  }
+}
+
+export async function getClips(userId: string) {
+  let pagination = null;
+  let clips: any[] = [];
+  for (let i = 0; i < 10; i++) {
+    const res: Response = await fetch(`https://api.twitch.tv/helix/clips?broadcaster_id=${userId}&first=100${pagination ? `&after=${pagination}` : ''}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': 'Bearer ' + options.token,
+        'Client-Id': options.clientID,
+        'Content-Type': 'application/json'
+      }
+    });
+    const body = await res.json();
+    pagination = body.pagination.cursor;
+    clips = clips.concat(body.data);
+    // console.log(`Got ${body.data.length} new clips. Now ${clips.length} total.`);
+    if (!pagination) {
+      break;
+    }
+  }
+  console.log(`Got ${clips.length} total clips.`);
+  return clips;
+}
+
+export async function getClipStreamURL(clipId: string) {
+  const result = await getClipInfo(clipId)
+  // console.log(`Selected target: ${JSON.stringify(result)}`)
+
+  const uri = result.sourceUrl + "?token=" + encodeURIComponent(result.token) + "&sig=" + encodeURIComponent(result.signature)
+  // console.log(`Video URI: ${uri}`)
+
+  return uri
+}
+
+async function getClipInfo(clipId: string) {
+  const content = JSON.stringify(buildGraphQLQuery(clipId))
+  const response = await fetch("https://gql.twitch.tv/gql", {
+      method: "POST",
+      headers: {
+         "Content-Type": "application/json",
+         "Client-ID": "kimne78kx3ncx6brgo4mv6wki5h1ko"
+      },
+      body: content
+  })
+
+  const responseBody = await response.text()
+  // console.log(`GraphQL Response: ${responseBody}`)
+
+  return parseGraphQLResponse(responseBody)
+}
+
+function buildGraphQLQuery(clipId: string) {
+ return {
+    operationName: "VideoAccessToken_Clip",
+    variables: {
+        slug: clipId
+    },
+    extensions: {
+         persistedQuery: {
+             version: 1,
+             sha256Hash: "36b89d2507fce29e5ca551df756d27c1cfe079e2609642b4390aa4c35796eb11"
+         }
+    }
+ }
+}
+
+function parseGraphQLResponse(responseBody: string) {
+   const jsonResponse = JSON.parse(responseBody);
+
+   const videoQualities = jsonResponse.data.clip.videoQualities;
+   const bestQuality = videoQualities.sort((a: any, b: any) => b.quality - a.quality)[0];
+   const playbackAccessToken = jsonResponse.data.clip.playbackAccessToken;
+
+   return {
+       sourceUrl: bestQuality.sourceURL,
+       signature: playbackAccessToken.signature,
+       token: playbackAccessToken.value
+   }
+}
+
+export async function getUserId(username: string) {
+  const res = await fetch('https://api.twitch.tv/helix/users?login=' + username, {
+    method: 'GET',
+    headers: {
+      'Authorization': 'Bearer ' + options.token,
+      'Client-Id': options.clientID,
+      'Content-Type': 'application/json'
+    }
+  });
+
+  const data = await res.json();
+  return data.data[0].id
+}

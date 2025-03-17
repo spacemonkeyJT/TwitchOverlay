@@ -139,10 +139,100 @@ async function registerEventSubListeners() {
     console.log(`Subscribed to channel.chat.notification [${data.data[0].id}]`);
   }
 }
+function tierStringToLevel(tier) {
+  switch (tier) {
+    case "1000":
+      return 1;
+    case "2000":
+      return 2;
+    case "3000":
+      return 3;
+    default:
+      return 0;
+  }
+}
+async function getClips(userId) {
+  let pagination = null;
+  let clips = [];
+  for (let i = 0;i < 10; i++) {
+    const res = await fetch(`https://api.twitch.tv/helix/clips?broadcaster_id=${userId}&first=100${pagination ? `&after=${pagination}` : ""}`, {
+      method: "GET",
+      headers: {
+        Authorization: "Bearer " + options.token,
+        "Client-Id": options.clientID,
+        "Content-Type": "application/json"
+      }
+    });
+    const body = await res.json();
+    pagination = body.pagination.cursor;
+    clips = clips.concat(body.data);
+    if (!pagination) {
+      break;
+    }
+  }
+  console.log(`Got ${clips.length} total clips.`);
+  return clips;
+}
+async function getClipStreamURL(clipId) {
+  const result = await getClipInfo(clipId);
+  const uri = result.sourceUrl + "?token=" + encodeURIComponent(result.token) + "&sig=" + encodeURIComponent(result.signature);
+  return uri;
+}
+async function getClipInfo(clipId) {
+  const content = JSON.stringify(buildGraphQLQuery(clipId));
+  const response = await fetch("https://gql.twitch.tv/gql", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Client-ID": "kimne78kx3ncx6brgo4mv6wki5h1ko"
+    },
+    body: content
+  });
+  const responseBody = await response.text();
+  return parseGraphQLResponse(responseBody);
+}
+function buildGraphQLQuery(clipId) {
+  return {
+    operationName: "VideoAccessToken_Clip",
+    variables: {
+      slug: clipId
+    },
+    extensions: {
+      persistedQuery: {
+        version: 1,
+        sha256Hash: "36b89d2507fce29e5ca551df756d27c1cfe079e2609642b4390aa4c35796eb11"
+      }
+    }
+  };
+}
+function parseGraphQLResponse(responseBody) {
+  const jsonResponse = JSON.parse(responseBody);
+  const videoQualities = jsonResponse.data.clip.videoQualities;
+  const bestQuality = videoQualities.sort((a, b) => b.quality - a.quality)[0];
+  const playbackAccessToken = jsonResponse.data.clip.playbackAccessToken;
+  return {
+    sourceUrl: bestQuality.sourceURL,
+    signature: playbackAccessToken.signature,
+    token: playbackAccessToken.value
+  };
+}
+async function getUserId(username) {
+  const res = await fetch("https://api.twitch.tv/helix/users?login=" + username, {
+    method: "GET",
+    headers: {
+      Authorization: "Bearer " + options.token,
+      "Client-Id": options.clientID,
+      "Content-Type": "application/json"
+    }
+  });
+  const data = await res.json();
+  return data.data[0].id;
+}
 
 // src/hypemeter.ts
 var progress = document.querySelector(".progress");
 var label = document.querySelector(".label");
+var hypemeter = document.querySelector(".hypemeter");
 var defaults = {
   value: 50,
   max: 300,
@@ -184,6 +274,7 @@ function setHypeMeter(value, max) {
   updateHypeMeter();
 }
 function initHypeMeter() {
+  hypemeter.style.display = "block";
   loadData();
   updateHypeMeter();
   window.chat = (message) => {
@@ -364,22 +455,7 @@ function processHypeMeter(message, username, badges, bits, subTier, subCount) {
     }
   }
 }
-
-// src/app.ts
-var errorPanel = document.querySelector(".errorPanel");
-function tierStringToLevel(tier) {
-  switch (tier) {
-    case "1000":
-      return 1;
-    case "2000":
-      return 2;
-    case "3000":
-      return 3;
-    default:
-      return 0;
-  }
-}
-function processChatMessage(data) {
+function processHypeMeterChatMessage(data) {
   const message = data.payload.event.message.text.trim();
   const badges = data.payload.event.badges.map((badge) => badge.set_id);
   const username = data.payload.event.chatter_user_login;
@@ -405,20 +481,106 @@ function processChatMessage(data) {
   }
   processHypeMeter(message, username, badges, bits, subTier, subCount);
 }
+
+// src/clip.ts
+var clipPanel = document.querySelector(".clip");
+var clipVideo = document.querySelector(".clipVideo");
+var channelId;
+function initClip(_channelId) {
+  channelId = _channelId;
+  clipPanel.style.display = "block";
+  clipVideo.onended = () => {
+    clipVideo.src = "";
+  };
+  window.chat = (message) => {
+    processChatCommand(message, ["moderator"]);
+  };
+}
+function getClipIdFromUrl(url) {
+  const match = /^https:\/\/clips\.twitch\.tv\/(.*)$/i.exec(url);
+  if (match) {
+    return match[1];
+  }
+  const match2 = /^https:\/\/www\.twitch\.tv\/.*?\/clip\/(.*)$/i.exec(url);
+  if (match2) {
+    return match2[1];
+  }
+  return "";
+}
+var clipCache = {};
+async function getClipIdFromUserId(userId) {
+  console.log(`Getting clip for user ${userId}`);
+  if (!clipCache[userId]) {
+    clipCache[userId] = await getClips(userId);
+  }
+  const clips = clipCache[userId];
+  const randomIndex = Math.floor(Math.random() * clips.length);
+  return clips[randomIndex].id;
+}
+async function processChatCommand(message, badges) {
+  const isModerator = badges.includes("moderator") || badges.includes("broadcaster");
+  const [command, ...args] = message.split(" ");
+  let isUrl = false;
+  if (command === "!showclip" && isModerator) {
+    let clipId = null;
+    if (args[0]) {
+      clipId = getClipIdFromUrl(args[0]);
+      if (clipId) {
+        isUrl = true;
+      } else {
+        let username = args[0];
+        if (username.startsWith("@")) {
+          username = username.slice(1);
+        }
+        const userId = await getUserId(username);
+        if (userId) {
+          clipId = await getClipIdFromUserId(userId);
+        }
+      }
+    } else {
+      clipId = await getClipIdFromUserId(channelId);
+    }
+    if (clipId) {
+      if (!isUrl) {
+        console.log("Clip ID:", clipId);
+        const clipUrl = `https://clips.twitch.tv/${clipId}`;
+        console.log(clipUrl);
+        await sendChatMessage(`Playing clip: ${clipUrl}`);
+      }
+      const videoUrl = await getClipStreamURL(clipId);
+      clipVideo.src = videoUrl;
+    }
+  }
+}
+function processClipChatMessage(data) {
+  const message = data.payload.event.message.text.trim();
+  const badges = data.payload.event.badges.map((badge) => badge.set_id);
+  processChatCommand(message, badges);
+}
+
+// src/app.ts
+var errorPanel = document.querySelector(".errorPanel");
 async function main() {
   try {
     const params = new URLSearchParams(window.location.search);
-    const channel = params.get("channel");
     const user_id = params.get("user_id");
+    const channel = params.get("channel") ?? user_id;
     const token = params.get("token");
     const clientID = params.get("client_id");
-    initHypeMeter();
-    if (channel && user_id && token && clientID) {
+    const widget = params.get("widget") ?? "hypemeter";
+    let processChatMessage = undefined;
+    if (widget === "hypemeter") {
+      initHypeMeter();
+      processChatMessage = processHypeMeterChatMessage;
+    } else if (widget === "clip" && channel) {
+      initClip(channel);
+      processChatMessage = processClipChatMessage;
+    }
+    if (channel && user_id && token && clientID && processChatMessage) {
       await startBot({ processChatMessage, channel, user_id, token, clientID });
     } else {
       console.error("Invalid parameters. Chat bot will not start.");
     }
-    console.log("For development, use: chat('!hm ...');");
   } catch (err) {
     console.log(err);
     errorPanel.textContent = `${err}`;
